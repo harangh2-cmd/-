@@ -1,0 +1,1407 @@
+<title>직관 월드</title>
+<meta name="claude:viewport-fit-sides" content="cover">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Jua&family=Noto+Sans+KR:wght@400;500;700&family=Press+Start+2P&display=swap">
+<style>
+  :root {
+    --ink: #1f2b4d; --card: #f3f6fb; --red: #e5484d;
+    --display: "Jua", "Apple SD Gothic Neo", "Malgun Gothic", sans-serif;
+    --body: "Noto Sans KR", "Apple SD Gothic Neo", "Malgun Gothic", system-ui, sans-serif;
+  }
+  * { box-sizing: border-box; }
+  html, body { height: 100%; }
+  body { margin: 0; overflow: hidden; background: #a9cdf0; color: var(--ink); font-family: var(--body); overscroll-behavior: none; }
+  #stage { position: fixed; inset: 0; touch-action: none; user-select: none; -webkit-user-select: none; cursor: grab; }
+  #stage canvas { position: absolute; inset: 0; width: 100%; height: 100%; display: block; image-rendering: pixelated; image-rendering: crisp-edges; }
+  #labels { position: absolute; inset: 0; pointer-events: none; overflow: hidden; }
+  .lab {
+    position: absolute; left: 0; top: 0; white-space: nowrap; will-change: transform;
+    font-family: var(--display); font-size: 14px; line-height: 1; padding: 4px 8px 5px; border-radius: 6px;
+    background: rgba(243, 246, 251, .94); border: 2px solid var(--ink);
+  }
+  .lab.me { background: var(--red); color: #fff; border-color: #8f1f27; }
+  .ripple { position: absolute; width: 30px; height: 30px; margin: -15px 0 0 -15px; border: 4px solid var(--red); pointer-events: none; animation: rip .55s steps(5) forwards; }
+  @keyframes rip { from { transform: scale(.3); opacity: 1; } to { transform: scale(1.4); opacity: 0; } }
+  .top {
+    position: fixed; z-index: 10; left: 0; right: 0; top: 0; display: flex; gap: 10px; align-items: flex-start; justify-content: space-between;
+    padding-top: max(12px, env(safe-area-inset-top, 0px)); padding-bottom: 8px;
+    padding-left: max(16px, env(safe-area-inset-left, 0px)); padding-right: max(16px, env(safe-area-inset-right, 0px)); pointer-events: none;
+  }
+  .pill { pointer-events: auto; background: rgba(243, 246, 251, .95); border: 3px solid var(--ink); border-radius: 8px; padding: 8px 12px; box-shadow: 0 4px 0 var(--ink); }
+  .pill h1 { margin: 0; font-family: var(--display); font-weight: 400; font-size: 19px; line-height: 1.15; }
+  .pill p { margin: 2px 0 0; font-size: 12.5px; line-height: 1.45; max-width: 31ch; }
+  .btn {
+    pointer-events: auto; min-height: 44px; padding: 0 14px; border: 3px solid var(--ink); border-radius: 8px; background: var(--card); color: var(--ink);
+    font-family: var(--display); font-size: 17px; cursor: pointer; box-shadow: 0 4px 0 var(--ink); white-space: nowrap;
+  }
+  .btn:active { transform: translateY(3px); box-shadow: 0 1px 0 var(--ink); }
+  :focus-visible { outline: 3px solid var(--red); outline-offset: 2px; }
+  .bar {
+    position: fixed; z-index: 10; left: 0; right: 0; bottom: 0;
+    padding-top: 10px; padding-bottom: max(12px, env(safe-area-inset-bottom, 0px));
+    padding-left: max(16px, env(safe-area-inset-left, 0px)); padding-right: max(16px, env(safe-area-inset-right, 0px));
+    display: flex; flex-wrap: wrap; justify-content: center; gap: 8px; pointer-events: none;
+  }
+  .bar .btn { flex: 1 1 0; min-width: 88px; max-width: 150px; padding: 0 8px; }
+  .bar .btn small { font-family: var(--body); font-size: 11px; opacity: .6; margin-left: 4px; }
+  #fail { position: fixed; inset: 0; display: none; align-items: center; justify-content: center; padding: 24px; text-align: center; background: #a9cdf0; z-index: 20; font-family: var(--display); font-size: 20px; }
+
+  /* 캐릭터 만들기 */
+  .mode-creator #stage { right: 380px; cursor: grab; }
+  .mode-creator .top { right: 380px; }
+  .mode-creator .bar, .mode-creator #labels { display: none; }
+  .mode-world .panel, .mode-world .creator-only, .mode-stadium .panel, .mode-stadium .creator-only { display: none; }
+  .mode-creator .world-only { display: none; }
+  .mode-stadium #stage, .mode-world #stage { right: 0; bottom: 0; }
+  .panel {
+    position: fixed; z-index: 12; right: 0; top: 0; bottom: 0; width: 380px; background: #f8f0e2; border-left: 4px solid var(--ink);
+    display: flex; flex-direction: column; padding-top: env(safe-area-inset-top, 0px); padding-right: env(safe-area-inset-right, 0px);
+  }
+  .tabs { display: flex; gap: 6px; padding: 12px 12px 8px; overflow-x: auto; flex: none; }
+  .tab { flex: 1 0 auto; min-height: 40px; padding: 0 10px; border: 3px solid var(--ink); border-radius: 8px; background: #fff; color: var(--ink); font-family: var(--display); font-size: 16px; cursor: pointer; white-space: nowrap; }
+  .tab.on { background: var(--ink); color: #fff; }
+  .pbody { flex: 1; overflow-y: auto; padding: 4px 14px 14px; -webkit-overflow-scrolling: touch; }
+  .grp { margin: 10px 0 16px; }
+  .grp h3 { margin: 0 0 8px; font-family: var(--display); font-weight: 400; font-size: 17px; }
+  .chips { display: flex; flex-wrap: wrap; gap: 8px; }
+  .chip { min-height: 40px; padding: 0 12px; border: 3px solid var(--ink); border-radius: 8px; background: #fff; color: var(--ink); font-family: var(--display); font-size: 15px; cursor: pointer; }
+  .chip.on { background: var(--red); border-color: #8f1f27; color: #fff; }
+  .sws { display: flex; flex-wrap: wrap; gap: 8px; }
+  .sw { width: 40px; height: 40px; border: 3px solid var(--ink); border-radius: 8px; cursor: pointer; padding: 0; }
+  .sw.on { outline: 4px solid var(--red); outline-offset: 2px; }
+  .teams { display: grid; grid-template-columns: repeat(2, 1fr); gap: 8px; }
+  .team { display: flex; align-items: center; gap: 8px; min-height: 48px; padding: 4px 8px; border: 3px solid var(--ink); border-radius: 8px; background: #fff; color: var(--ink); font-family: var(--display); font-size: 15px; cursor: pointer; text-align: left; }
+  .team.on { background: #ffe9ea; outline: 4px solid var(--red); outline-offset: 1px; }
+  .team i { display: block; width: 14px; height: 28px; border: 2px solid var(--ink); border-radius: 3px; flex: none; }
+  .team span { min-width: 0; }
+  .num { display: flex; align-items: center; gap: 10px; }
+  .num output { min-width: 3ch; text-align: center; font-family: var(--display); font-size: 28px; }
+  .num .btn { min-width: 48px; padding: 0 10px; }
+  input.txt { width: 100%; min-height: 46px; padding: 0 12px; border: 3px solid var(--ink); border-radius: 8px; background: #fff; color: var(--ink); font-family: var(--display); font-size: 20px; }
+  .pfoot { display: flex; gap: 10px; padding: 10px 14px; padding-bottom: max(12px, env(safe-area-inset-bottom, 0px)); border-top: 4px solid var(--ink); background: #f3e7d3; flex: none; }
+  .pfoot .btn { flex: 1; }
+  .btn.go { flex: 2; background: var(--red); color: #fff; border-color: #8f1f27; box-shadow: 0 4px 0 #8f1f27; font-size: 20px; }
+  .lab.pod { background: #fff; border-width: 4px; font-size: 15px; padding: 4px 10px; }
+  .lab.gate { background: var(--red); color: #fff; border-color: #8f1f27; }
+  .seat-only, .mode-stadium .exit-only { display: none; }
+  .mode-stadium.seated .seat-only { display: inline-flex; }
+  .mode-world .stad-only, .mode-creator .stad-only { display: none; }
+  .mode-stadium .plaza-only { display: none; }
+  #toast { position: fixed; z-index: 30; left: 50%; top: 84px; transform: translateX(-50%); background: var(--ink); color: #fff; padding: 8px 14px; border-radius: 8px; font-family: var(--display); font-size: 15px; opacity: 0; transition: opacity .25s; pointer-events: none; }
+  #modal { position: fixed; inset: 0; z-index: 50; background: rgba(31,43,77,.55); display: none; align-items: center; justify-content: center; padding: 16px; }
+  #modal .card { background: #f8f0e2; border: 4px solid var(--ink); border-radius: 10px; padding: 16px; width: min(340px, 100%); display: flex; flex-direction: column; gap: 12px; box-shadow: 0 6px 0 var(--ink); }
+  #modal h2 { margin: 0; font-family: var(--display); font-weight: 400; font-size: 20px; }
+  #modal .row { display: flex; gap: 10px; } #modal .row .btn { flex: 1; }
+  #sb { position: fixed; z-index: 11; left: 50%; top: 10px; transform: translateX(-50%); background: #1f2a46; color: #fff; border: 3px solid var(--ink); border-radius: 8px; padding: 4px 14px; font-family: var(--display); display: flex; align-items: center; gap: 10px; box-shadow: 0 4px 0 var(--ink); }
+  #sb b { font-weight: 400; font-size: 24px; letter-spacing: 1px; } #sb .t { font-size: 14px; } #sb em { font-style: normal; font-size: 11px; opacity: .75; }
+  .mode-world #sb, .mode-creator #sb { display: none; }
+  @media (max-width: 760px) { #sb { top: 118px; } }
+  #cmodal { position: fixed; inset: 0; z-index: 50; background: rgba(31,43,77,.55); display: none; align-items: center; justify-content: center; padding: 16px; }
+  #cmodal .card { background: #f8f0e2; border: 4px solid var(--ink); border-radius: 10px; padding: 16px; width: min(360px, 100%); max-height: 90vh; overflow-y: auto; display: flex; flex-direction: column; gap: 12px; box-shadow: 0 6px 0 var(--ink); }
+  #cmodal h2 { margin: 0; font-family: var(--display); font-weight: 400; font-size: 20px; } #cmodal .sub { margin: 0; font-size: 13px; }
+  .step { display: flex; align-items: center; gap: 10px; } .step span { flex: 1; font-family: var(--display); font-size: 17px; } .step output { min-width: 2.5ch; text-align: center; font-family: var(--display); font-size: 26px; } .step .btn { min-width: 44px; }
+  .plist { display: flex; flex-direction: column; gap: 4px; } .pr { padding: 6px 10px; border: 2px solid var(--ink); border-radius: 6px; background: #fff; font-size: 14px; } .pr.me { background: #ffe9ea; } .pr.hit { background: #fff3a8; }
+  .host { border-top: 3px dashed var(--ink); padding-top: 10px; display: flex; flex-direction: column; gap: 8px; } .host h3 { margin: 0; font-family: var(--display); font-weight: 400; font-size: 16px; }
+  .host .txt { min-height: 40px; font-size: 16px; }
+  #fade { position: fixed; inset: 0; z-index: 40; background: #1f2b4d; opacity: 0; pointer-events: none; transition: opacity .35s; }
+  @media (max-width: 760px) {
+    .mode-creator #stage { right: 0; bottom: 52%; }
+    .mode-creator .top { right: 0; }
+    .mode-creator .pill p, .pill p { display: none; }
+    .panel { left: 0; top: auto; width: auto; height: 52%; border-left: 0; border-top: 4px solid var(--ink); padding-right: 0; }
+    .btn { min-height: 40px; font-size: 15px; }
+  }
+
+  /* ===== 픽셀 UI 테마 ===== */
+  :root { --ink: #2b2850; --cream: #fff6dc; --cream2: #ffe8b5; --pink: #ff7fa5; --pinkd: #c24b72; --mint: #7fe0a0; --mintd: #2f9a62; --sky: #8fd3ff; --sun: #ffd84a; --red: #ff6a7f; --barh: 64px;
+    --pxs: 0 -3px 0 0 var(--ink), 0 3px 0 0 var(--ink), -3px 0 0 0 var(--ink), 3px 0 0 0 var(--ink);
+    --pxs2: 0 -2px 0 0 var(--ink), 0 2px 0 0 var(--ink), -2px 0 0 0 var(--ink), 2px 0 0 0 var(--ink);
+    --num: "Press Start 2P", "Jua", monospace; }
+  .btn, .tab, .chip, .sw, .team, .pill, .card, input.txt { border: 0 !important; border-radius: 0 !important; }
+  .btn, .tab, .chip { background: var(--cream); color: var(--ink); font-family: var(--display); text-shadow: 0 1px 0 rgba(255,255,255,.7);
+    box-shadow: var(--pxs), 0 6px 0 0 var(--ink), inset 0 3px 0 0 rgba(255,255,255,.85), inset 0 -3px 0 0 rgba(43,40,80,.14); margin-bottom: 3px; }
+  .btn:hover, .tab:hover, .chip:hover { filter: brightness(1.05); }
+  .btn:active, .tab:active, .chip:active { transform: translateY(3px); box-shadow: var(--pxs), inset 0 3px 0 0 rgba(43,40,80,.16); }
+  .btn:disabled { opacity: .5; filter: grayscale(.4); cursor: default; }
+  .btn.go { background: var(--mint); }
+  #rand { background: var(--sky); }
+  .top .btn { min-height: 38px; font-size: 15px; padding: 0 12px; }
+  .tab { background: #fff; } .tab.on { background: var(--sun); }
+  .chip.on { background: var(--pink); color: #fff; text-shadow: 0 2px 0 var(--pinkd); }
+  .sw, .team { box-shadow: var(--pxs2); } .sw { width: 38px; height: 38px; margin: 3px; }
+  .sw.on { outline: 0 !important; box-shadow: var(--pxs2), 0 0 0 5px var(--sun), 0 0 0 8px var(--ink); }
+  .team { background: #fff; } .team.on { background: #ffe0ea; outline: 0 !important; box-shadow: var(--pxs2), 0 0 0 5px var(--pink), 0 0 0 8px var(--ink); }
+  .team i { border: 2px solid var(--ink); border-radius: 0; }
+  .grp h3 { font-family: var(--display); font-weight: 400; font-size: 16px; color: var(--ink); } .grp h3::before { content: "■ "; color: var(--pink); font-size: 12px; }
+  .panel { background: var(--cream) radial-gradient(rgba(43,40,80,.09) 1.5px, transparent 1.5px) 0 0 / 12px 12px; border-left: 0; box-shadow: -4px 0 0 0 var(--ink); }
+  .pfoot { background: var(--cream2); border-top: 0; box-shadow: 0 -4px 0 0 var(--ink); }
+  .num output { font-family: var(--num); font-size: 20px; }
+  input.txt { background: #fff; box-shadow: var(--pxs2); font-family: var(--display); } input.txt:focus-visible { outline: 3px solid var(--pink); outline-offset: 4px; }
+  .pill { box-shadow: var(--pxs), 0 6px 0 0 var(--ink); padding: 8px 14px; }
+  .pill h1::before { content: "★ 현재 위치"; font-family: var(--body); font-size: 11px; letter-spacing: .06em; display: block; opacity: .85; margin-bottom: 2px; }
+  .pill p { font-size: 12px; opacity: .9; }
+  .mode-creator .pill { background: var(--sun); color: var(--ink); }
+  .mode-world .pill { background: var(--mintd); color: #fff; } .mode-world .pill h1 { text-shadow: 0 2px 0 rgba(0,0,0,.25); }
+  .mode-stadium .pill { background: var(--ink); color: #fff; box-shadow: 0 -3px 0 0 #0f0d24, 0 3px 0 0 #0f0d24, -3px 0 0 0 #0f0d24, 3px 0 0 0 #0f0d24, 0 6px 0 0 #0f0d24; } .mode-stadium .pill h1 { color: var(--sun); }
+  .lab { border: 0; border-radius: 0; background: #fff; color: var(--ink); box-shadow: var(--pxs2); font-size: 13px; padding: 4px 8px 5px; }
+  .lab.me { background: var(--pink); color: #fff; text-shadow: 0 1px 0 var(--pinkd); border: 0; }
+  .lab.pod { background: var(--cream); font-size: 14px; padding: 5px 10px 6px; border: 0; }
+  .lab.gate { background: var(--sun); color: var(--ink); border: 0; }
+  .ripple { border-radius: 0; border: 4px solid var(--sun); }
+  .bar { background: #5a54a0; padding-top: 14px; box-shadow: 0 -4px 0 0 var(--ink); }
+  .bar .btn { min-height: 44px; font-size: 16px; }
+  .bar .btn small { font-family: var(--num); font-size: 8px; background: rgba(43,40,80,.18); padding: 3px 4px; margin-left: 6px; opacity: 1; vertical-align: 1px; }
+  .bar .btn.mo[data-k="yes"] { background: #ffe066; } .bar .btn.mo[data-k="headgrab"] { background: #ffb3c6; } .bar .btn.mo[data-k="clap"] { background: #a9e0ff; }
+  .bar .btn.mo[data-k="angry"] { background: #ff9c86; } .bar .btn.mo[data-k="sad"] { background: #cdd5ff; } .bar .btn.mo[data-k="wave"] { background: #a6efbd; }
+  .bar .btn.stad-only { background: #fff; } .bar .btn.seat-only { background: var(--cream2); }
+  #sb { background: var(--ink); border: 0; border-radius: 0; box-shadow: 0 -3px 0 0 #0f0d24, 0 3px 0 0 #0f0d24, -3px 0 0 0 #0f0d24, 3px 0 0 0 #0f0d24, 0 6px 0 0 #0f0d24; top: 14px; padding: 6px 16px; }
+  #sb b { font-family: var(--num); font-size: 18px; color: var(--sun); letter-spacing: 0; } #sb .t { font-size: 14px; } #sb em { color: var(--mint); opacity: 1; }
+  #toast { border-radius: 0; background: var(--ink); box-shadow: 0 0 0 3px #fff, 0 0 0 6px var(--ink); }
+  .card { background: var(--cream) radial-gradient(rgba(43,40,80,.09) 1.5px, transparent 1.5px) 0 0 / 12px 12px; box-shadow: var(--pxs), 0 8px 0 0 var(--ink) !important; }
+  #modal h2, #cmodal h2 { color: var(--ink); } #modal h2::before, #cmodal h2::before { content: "★ "; color: var(--pink); }
+  .step output { font-family: var(--num); font-size: 18px; }
+  .pr { border: 0; border-radius: 0; box-shadow: var(--pxs2); background: #fff; margin: 2px 0; } .pr.me { background: #ffe0ea; } .pr.hit { background: #fff0a0; }
+  .host { border-top: 3px dashed var(--ink); }
+  #chatdock { position: fixed; z-index: 11; left: max(14px, env(safe-area-inset-left, 0px)); bottom: calc(var(--barh) + 12px); width: min(380px, calc(100vw - 28px)); display: flex; flex-direction: column; gap: 8px; }
+  .mode-creator #chatdock { display: none; }
+  #chatlog { max-height: 132px; overflow-y: auto; display: flex; flex-direction: column; gap: 3px; scrollbar-width: thin; }
+  #chatbox { display: flex; gap: 8px; } #chatbox .txt { flex: 1; min-width: 0; } #chatbox .btn { flex: none; padding: 0 12px; }
+  .cl { flex: none; font-size: 13px; line-height: 1.4; word-break: break-word; }
+  #chatlog { background: rgba(43,40,80,.82); border-radius: 0; box-shadow: var(--pxs2); padding: 6px 8px; }
+  .cl { background: transparent; color: #fff; padding: 1px 2px; border-radius: 0; } .cl b { color: var(--sun); } .cl.mine b { color: var(--pink); } .cl.sys { background: transparent; color: var(--mint); } .cl.sys b { color: var(--mint); }
+  #chatbox .txt { min-height: 38px; font-size: 15px; } #chatbox .btn { min-height: 38px; font-size: 14px; }
+  .bar .btn { align-items: center; justify-content: center; }
+  .bar .btn.mo { display: inline-flex; }
+  .bar { flex-direction: column; align-items: stretch; flex-wrap: nowrap; gap: 10px; }
+  .bar .morow, .bar .seatrow { display: flex; flex-wrap: wrap; justify-content: center; gap: 8px; pointer-events: none; }
+  .bar .seatrow { display: none; padding: 8px 8px 10px; background: rgba(255,255,255,.16); box-shadow: inset 0 0 0 3px rgba(255,255,255,.28); position: relative; margin-top: 4px; }
+  .mode-stadium.seated .bar .seatrow { display: flex; }
+  .bar .seatrow::before { content: "자리"; position: absolute; left: 6px; top: -9px; background: #5a54a0; color: #fff; font-family: var(--display); font-size: 12px; padding: 0 6px; }
+  .bar .morow::before { content: "감정 표현"; flex: 0 0 100%; text-align: center; color: #fff; font-family: var(--display); font-size: 12px; opacity: .85; margin-top: -4px; }
+  .bar .morow .btn, .bar .seatrow .btn { pointer-events: auto; flex: 1 1 0; min-width: 88px; max-width: 150px; }
+  #voice { position: fixed; z-index: 11; right: max(16px, env(safe-area-inset-right, 0px)); top: 66px; width: 210px; display: none; flex-direction: column; gap: 8px; padding: 10px; background: var(--cream); box-shadow: var(--pxs), 0 6px 0 0 var(--ink); }
+  #voice .vt { font-family: var(--display); font-size: 15px; } #voice .btn { font-size: 15px; }
+  #voice .meter { height: 10px; background: #fff; box-shadow: var(--pxs2); } #voice .meter i { display: block; height: 100%; width: 0; background: var(--mintd); }
+  #voice .vrow { display: flex; align-items: center; gap: 6px; font-family: var(--display); font-size: 14px; } #voice input[type=range] { flex: 1; min-width: 0; accent-color: #c24b72; } #voice output { font-family: var(--num); font-size: 9px; min-width: 4ch; text-align: right; }
+  #voice .vn { font-size: 11px; opacity: .75; }
+  .lab.talk { background: var(--mint); } .lab.talk::before { content: "♪ "; }
+  @media (max-width: 760px) { #voice { top: 162px; width: 190px; padding: 8px; } }
+  #voice .mrow { display: flex; align-items: center; gap: 10px; }
+  #voice .btn.mic { display: flex; align-items: center; justify-content: center; gap: 8px; min-height: 46px; min-width: 92px; padding: 0 10px; flex: none; }
+  #voice .btn.mic svg { display: block; } #voice .btn.mic .onoff { font-family: var(--num); font-size: 11px; text-shadow: none; }
+  #voice .btn.mic.on { background: var(--mint); } #voice .btn.mic.on svg { animation: blink 1s steps(2) infinite; }
+  #voice .btn.mic.off { background: #ffd0d8; }
+  #voice .meter { flex: 1; min-width: 0; }
+  @keyframes blink { 50% { opacity: .35; } }
+  /* 정리: 덜 복잡하게 */
+  .mode-world .pill p, .mode-stadium .pill p { display: none; }
+  #sb.empty { display: none !important; }
+  .bar .seatrow { background: none; box-shadow: none; padding: 0; margin: 0; } .bar .seatrow::before, .bar .morow::before { display: none; }
+  .bar { gap: 8px; padding-top: 12px; }
+  #chatlog { max-height: 70px; }
+  .lab.pod.editable { pointer-events: auto; cursor: pointer; background: #fff3b0; }
+  .btn.mictop { min-width: 44px; padding: 0 10px; min-height: 38px; display: inline-flex; align-items: center; justify-content: center; }
+  .btn.mictop svg { display: block; width: 18px; height: 22px; } .btn.mictop.on { background: var(--mint); } .btn.mictop.off { background: #ffd0d8; } .btn.mictop.open { outline: 3px solid var(--sun); outline-offset: 3px; }
+  #voice { top: 62px; }
+  @media (max-width: 760px) { #voice { top: 112px; } #chatlog { max-height: 56px; } }
+  #fade { background: var(--ink); }
+  @media (max-width: 760px) { .pill { flex: none; } .pill h1 { white-space: nowrap; font-size: 17px; } #chatlog { max-height: 84px; } #sb { max-width: 94vw; padding: 5px 10px; gap: 6px; top: 118px; } #sb .t { font-size: 12px; } #sb b { font-size: 14px; } #sb em { display: none; }
+    .panel { box-shadow: 0 -4px 0 0 var(--ink); } .bar { padding-left: 10px; padding-right: 10px; gap: 10px 8px; } }
+</style>
+
+<div id="stage" aria-label="스타디움 앞 광장 (3D)"><div id="labels"></div></div>
+<div class="top">
+  <div class="pill">
+    <h1 id="ttl">내 캐릭터 만들기</h1>
+    <p id="hint">끌어서 돌려 보고, 오른쪽에서 골라요.</p>
+  </div>
+  <div style="display:flex;gap:8px;flex-wrap:wrap;justify-content:flex-end">
+    <button class="btn" id="px" type="button">픽셀 자동</button>
+    <button class="btn world-only" id="snd" type="button">소리 끄기</button>
+    <button class="btn world-only plaza-only" id="redo" type="button">다시 꾸미기</button>
+    <button class="btn stad-only" id="exit" type="button">광장으로</button>
+  </div>
+</div>
+<div class="bar" id="bar"></div>
+<aside class="panel creator-only" id="panel" aria-label="캐릭터 꾸미기">
+  <div class="tabs" id="tabs" role="tablist"></div>
+  <div class="pbody" id="pbody"></div>
+  <div class="pfoot"><button class="btn" id="rand" type="button">랜덤</button><button class="btn go" id="enter" type="button">입장하기</button></div>
+</aside>
+<div id="fade"></div>
+<div id="toast" role="status"></div>
+<div id="modal" role="dialog" aria-label="팟 이름 바꾸기"><div class="card"><h2>팟 이름 바꾸기</h2><input class="txt" id="podname" type="text" maxlength="6" aria-label="팟 이름"><div class="row"><button class="btn" id="pcancel" type="button">취소</button><button class="btn go" id="pok" type="button">확인</button></div></div></div>
+<div id="fail">3D를 불러오지 못했어요.<br>다른 브라우저로 열어 주세요.</div>
+
+<script src="vendor/three.min.js"></script>
+<script>
+(function () {
+  'use strict';
+  if (!window.THREE) { document.getElementById('fail').style.display = 'flex'; return; }
+  var T = THREE, D2R = Math.PI / 180;
+  var stage = document.getElementById('stage'), labelsEl = document.getElementById('labels'), bar = document.getElementById('bar');
+
+  // ---------- 렌더러 (낮은 해상도로 그린 뒤 확대: 큼직한 픽셀) ----------
+  var renderer;
+  try { renderer = new T.WebGLRenderer({ antialias: false, powerPreference: 'high-performance' }); }
+  catch (e) { document.getElementById('fail').style.display = 'flex'; return; }
+  renderer.setPixelRatio(1);
+  stage.insertBefore(renderer.domElement, labelsEl);
+  var scene = new T.Scene();
+  scene.background = new T.Color('#a9cdf0');
+  scene.fog = new T.Fog('#cfe2f6', 70, 150);
+  var camera = new T.PerspectiveCamera(38, 1, 0.5, 300);
+  scene.add(new T.AmbientLight(0xffffff, 0.78));
+  var sun = new T.DirectionalLight(0xfff4e0, 0.62); sun.position.set(-18, 40, 22); scene.add(sun);
+  var cscene = new T.Scene(); cscene.background = new T.Color('#f1e3d3');
+  cscene.add(new T.HemisphereLight(0xfff3e0, 0xc9a577, 0.95));
+  var csun = new T.DirectionalLight(0xffffff, 0.5); csun.position.set(-8, 20, 18); cscene.add(csun);
+  var sscene = new T.Scene(); sscene.background = new T.Color('#9cc3ec'); sscene.fog = new T.Fog('#c5dbf3', 90, 190);
+  sscene.add(new T.AmbientLight(0xffffff, 0.8)); var ssun = new T.DirectionalLight(0xfff4e0, 0.6); ssun.position.set(-18, 40, 10); sscene.add(ssun);
+  var mode = 'creator', GY = function () { return 0; }, BND = { x: 27, z0: -13, z1: 22 };
+
+  var W = 0, H = 0, PS = 4, PSset = 0;
+  function resize() {
+    W = stage.clientWidth; H = stage.clientHeight;
+    PS = PSset || Math.max(3, Math.min(5, Math.round(Math.min(W, H) / 170)));
+    renderer.setSize(Math.floor(W / PS), Math.floor(H / PS), false);
+    camera.aspect = W / H; camera.updateProjectionMatrix();
+  }
+
+  // ---------- 도우미 ----------
+  function mkTex(w, h, fn, rx, ry) {
+    var c = document.createElement('canvas'); c.width = w; c.height = h;
+    var g = c.getContext('2d'); g.imageSmoothingEnabled = false; fn(g);
+    var t = new T.CanvasTexture(c);
+    t.magFilter = T.NearestFilter; t.minFilter = T.NearestFilter; t.generateMipmaps = false;
+    if (rx) { t.wrapS = t.wrapT = T.RepeatWrapping; t.repeat.set(rx, ry || rx); }
+    return t;
+  }
+  function mat(c) { return new T.MeshLambertMaterial({ color: c }); }
+  function box(parent, w, h, d, color, x, y, z) {
+    var m = new T.Mesh(new T.BoxGeometry(w, h, d), color && color.isMaterial ? color : (Array.isArray(color) ? color : mat(color)));
+    m.position.set(x || 0, y || 0, z || 0); parent.add(m); return m;
+  }
+  function px(g, c, x, y, w, h) { g.fillStyle = c; g.fillRect(x, y, w || 1, h || 1); }
+  function lum(h) { var n = parseInt(h.slice(1), 16); return (0.2126 * (n >> 16 & 255) + 0.7152 * (n >> 8 & 255) + 0.0722 * (n & 255)) / 255; }
+
+  // ---------- 데이터 ----------
+  var SKINS = ['#fde0cf', '#f7c9ad', '#eeb08a', '#d9955f', '#b06e3d', '#7a4727'];
+  var HAIRC = ['#2f2528', '#5e3d2c', '#8e5a2e', '#d9a23f', '#f1d27a', '#c4433b', '#ee90ae', '#8db6e6'];
+  var TEAMS = {
+    tog: { shirt: '#1f5a3e', c2: '#2d4a9a', pattern: 'solid', shorts: '#1b4a35', socks: '#1b4a35', shoe: '#f4efe6' },
+    kor: { shirt: '#d2323d', c2: '#10296b', pattern: 'solid', shorts: '#10296b', socks: '#d2323d', shoe: '#f4efe6' },
+    bra: { shirt: '#f6d21c', c2: '#2f8a58', pattern: 'solid', shorts: '#2c5aa8', socks: '#f4efe6', shoe: '#2f8a58' },
+    arg: { shirt: '#80b9e6', c2: '#f7f3ea', pattern: 'stripes', shorts: '#1f1d27', socks: '#1f1d27', shoe: '#f4efe6' },
+    fra: { shirt: '#213272', c2: '#cb2433', pattern: 'solid', shorts: '#f4efe6', socks: '#cb2433', shoe: '#f4efe6' },
+    jpn: { shirt: '#22449a', c2: '#f4efe6', pattern: 'solid', shorts: '#22449a', socks: '#22449a', shoe: '#f4efe6' },
+    eng: { shirt: '#f4efe6', c2: '#cb2433', pattern: 'solid', shorts: '#1d2c63', socks: '#f4efe6', shoe: '#1d2c63' },
+    tot: { shirt: '#f4efe6', c2: '#16275b', pattern: 'solid', shorts: '#16275b', socks: '#16275b', shoe: '#f4efe6' },
+    mci: { shirt: '#74b0df', c2: '#1f2f60', pattern: 'solid', shorts: '#f4efe6', socks: '#74b0df', shoe: '#f4efe6' },
+    rma: { shirt: '#f4efe6', c2: '#e6b926', pattern: 'solid', shorts: '#f4efe6', socks: '#f4efe6', shoe: '#e6b926' },
+    fcb: { shirt: '#a9204f', c2: '#1f58a0', pattern: 'stripes', shorts: '#17295f', socks: '#a9204f', shoe: '#f4efe6' }
+  };
+  var TEAM_GROUPS = [
+    ['우리 팀', [['tog', '투게더']]],
+    ['국가대표', [['kor', '대한민국'], ['bra', '브라질'], ['arg', '아르헨티나'], ['fra', '프랑스'], ['jpn', '일본'], ['eng', '잉글랜드']]],
+    ['클럽', [['tot', '토트넘'], ['mci', '맨시티'], ['rma', '레알 마드리드'], ['fcb', '바르셀로나']]]
+  ];
+  var DIG = ['111101101101111', '010110010010111', '111001111100111', '111001111001111', '101101111001001', '111100111001111', '111100111101111', '111001001001001', '111101111101111', '111101111001111'];
+  var FACES = ['basic', 'happy', 'surprised', 'angry', 'sad'];
+
+  function faceTex(skin, face, fem) {
+    return mkTex(8, 8, function (g) {
+      var K = '#2d2233', ch = '#f08c9b';
+      px(g, skin, 0, 0, 8, 8);
+      px(g, ch, 1, 5, 2, 1); px(g, ch, 5, 5, 2, 1);
+      if (face === 'happy') {
+        px(g, K, 1, 3); px(g, K, 2, 2); px(g, K, 3, 3); px(g, K, 4, 3); px(g, K, 5, 2); px(g, K, 6, 3);
+        px(g, K, 2, 5, 4, 1); px(g, '#c0384a', 3, 6, 2, 1);
+      } else if (face === 'surprised') {
+        px(g, K, 2, 2, 1, 2); px(g, K, 5, 2, 1, 2); px(g, K, 3, 5, 2, 2); px(g, '#c0384a', 3, 5, 2, 2);
+      } else if (face === 'angry') {
+        px(g, K, 1, 2, 2, 1); px(g, K, 3, 3); px(g, K, 5, 2, 2, 1); px(g, K, 4, 3);
+        px(g, K, 2, 4); px(g, K, 5, 4); px(g, K, 3, 6, 2, 1); px(g, K, 2, 7); px(g, K, 5, 7);
+      } else if (face === 'sad') {
+        px(g, K, 2, 3); px(g, K, 5, 3); px(g, K, 1, 2); px(g, K, 6, 2);
+        px(g, '#8fc4f2', 1, 4); px(g, K, 3, 6, 2, 1); px(g, K, 2, 7); px(g, K, 5, 7);
+      } else {
+        px(g, K, 2, 3, 1, 2); px(g, K, 5, 3, 1, 2); px(g, K, 3, 6, 2, 1); px(g, K, 2, 5); px(g, K, 5, 5);
+      }
+      if (fem) { px(g, K, 1, 3); px(g, K, 6, 3); }
+    });
+  }
+  function shirtTex(team, number, back) {
+    return mkTex(7, 8, function (g) {
+      px(g, team.shirt, 0, 0, 7, 8);
+      var i;
+      if (team.pattern === 'stripes') for (i = 1; i < 7; i += 2) px(g, team.c2, i, 0, 1, 8);
+      if (team.pattern === 'hoops') for (i = 1; i < 8; i += 2) px(g, team.c2, 0, i, 7, 1);
+      if (!back) { px(g, team.c2, 2, 0, 3, 1); px(g, team.c2, 3, 1, 1, 1); }
+      else {
+        var s = String(number), dark = lum(team.shirt) > 0.6, col = dark ? '#1f2a52' : '#fbf6ee';
+        var x0 = s.length === 1 ? 2 : 0;
+        for (var k = 0; k < s.length; k++) {
+          var bits = DIG[+s[k]];
+          for (var j = 0; j < 15; j++) if (bits[j] === '1') px(g, col, x0 + k * 4 + (j % 3), 2 + Math.floor(j / 3));
+        }
+      }
+    });
+  }
+
+  // ---------- 캐릭터 ----------
+  function buildModel(cfg) {
+    var team = TEAMS[cfg.team] || TEAMS.kor, skin = SKINS[cfg.skin], fem = cfg.body === 'f', hc = HAIRC[cfg.hairColor];
+    var accent = lum(team.shirt) < 0.8 ? team.shirt : (lum(team.c2) < 0.8 ? team.c2 : '#d2323d');
+    var root = new T.Group(), M = { root: root };
+    var body = new T.Group(); root.add(body); M.body = body;
+
+    // 다리
+    function leg(side) {
+      var g = new T.Group(); g.position.set(side * 0.42, 1.5, 0); root.add(g);
+      box(g, 0.66, 0.5, 0.7, team.shorts, 0, -0.25, 0);
+      box(g, 0.56, 0.7, 0.56, team.socks, 0, -0.85, 0);
+      box(g, 0.56, 0.12, 0.58, team.c2, 0, -0.62, 0);
+      box(g, 0.62, 0.3, 0.9, team.shoe, 0, -1.35, 0.14);
+      return g;
+    }
+    M.legL = leg(-1); M.legR = leg(1);
+    // 골반 + 몸통
+    box(body, 1.46, 0.36, 0.84, team.shorts, 0, 1.55, 0);
+    var tw = fem ? 1.3 : 1.46;
+    var sideM = mat(team.shirt);
+    box(body, tw, 1.5, 0.84, [sideM, sideM, mat(team.shirt), mat(team.shirt), new T.MeshLambertMaterial({ map: shirtTex(team, cfg.number, false) }), new T.MeshLambertMaterial({ map: shirtTex(team, cfg.number, true) })], 0, 2.45, 0);
+    if (cfg.neck === 'scarf') {
+      box(body, tw + 0.1, 0.34, 0.96, accent, 0, 3.12, 0);
+      box(body, 0.34, 0.9, 0.12, accent, 0.3, 2.65, 0.5);
+      box(body, 0.34, 0.12, 0.13, '#f7f0e6', 0.3, 2.5, 0.5);
+    }
+    // 팔
+    function arm(side) {
+      var sh = new T.Group(); sh.position.set(side * (tw / 2 + 0.3), 3.05, 0); body.add(sh);
+      box(sh, 0.56, 0.7, 0.58, team.shirt, 0, -0.3, 0);
+      box(sh, 0.58, 0.12, 0.6, team.c2, 0, -0.6, 0);
+      var el = new T.Group(); el.position.set(0, -0.68, 0); sh.add(el);
+      box(el, 0.46, 0.78, 0.46, skin, 0, -0.34, 0);
+      box(el, 0.5, 0.4, 0.5, skin, 0, -0.78, 0.0);
+      return { sh: sh, el: el };
+    }
+    M.armL = arm(-1); M.armR = arm(1);
+    function tool(a, kind) {
+      var g = new T.Group(); g.position.set(0, -0.82, 0.05); a.el.add(g);
+      if (kind === 'clappers') { box(g, 0.28, 1.7, 0.28, accent, 0, 0.7, 0); box(g, 0.3, 0.14, 0.3, '#f7f0e6', 0, 0.55, 0); box(g, 0.3, 0.14, 0.3, '#f7f0e6', 0, 1.1, 0); }
+      if (kind === 'megaphone') { box(g, 0.3, 0.3, 0.5, '#3b3340', 0, 0.2, 0.2); box(g, 0.7, 0.7, 0.6, accent, 0, 0.2, 0.7); box(g, 0.9, 0.9, 0.12, '#f7f0e6', 0, 0.2, 1.05); }
+    }
+    if (cfg.hand === 'clappers') { tool(M.armL, 'clappers'); tool(M.armR, 'clappers'); }
+    if (cfg.hand === 'megaphone') tool(M.armR, 'megaphone');
+
+    // 머리
+    var head = new T.Group(); head.position.set(0, 3.2, 0); root.add(head); M.head = head;
+    var sk = mat(skin);
+    M.faceMats = FACES.map(function (f) { return new T.MeshLambertMaterial({ map: faceTex(skin, f, fem) }); });
+    M.headMesh = box(head, 1.5, 1.5, 1.5, [sk, sk, sk, sk, M.faceMats[0], sk], 0, 0.75, 0);
+    box(head, 0.14, 0.34, 0.2, skin, -0.78, 0.7, 0.0); box(head, 0.14, 0.34, 0.2, skin, 0.78, 0.7, 0.0);
+    var hs = cfg.hair, H = hc, hg = new T.Group(); hg.position.y = 0.75; head.add(hg);
+    function hb(w, h, d, x, y, z, c) { box(hg, w, h, d, c || H, x, y, z); }
+    if (hs === 'buzz') hb(1.58, 0.28, 1.58, 0, 0.68, 0);
+    else if (hs !== 'none') {
+      hb(1.64, 0.48, 1.64, 0, 0.62, 0);          // 윗머리
+      hb(1.64, 0.4, 0.2, 0, 0.4, 0.72);          // 앞머리
+      hb(0.22, 0.9, 1.4, -0.72, 0.15, -0.05); hb(0.22, 0.9, 1.4, 0.72, 0.15, -0.05);
+      hb(1.64, 1.2, 0.22, 0, 0.0, -0.72);        // 뒷머리
+      if (hs === 'bob' || hs === 'long') { hb(0.28, 0.9, 1.5, -0.72, -0.62, -0.02); hb(0.28, 0.9, 1.5, 0.72, -0.62, -0.02); hb(1.64, 0.9, 0.26, 0, -0.62, -0.72); }
+      if (hs === 'long') hb(1.5, 1.0, 0.26, 0, -1.5, -0.74);
+      if (hs === 'ponytail') { hb(0.42, 1.1, 0.42, 0, -0.35, -1.0); hb(0.5, 0.2, 0.5, 0, 0.2, -1.0, accent); }
+      if (hs === 'twintail') { [-1, 1].forEach(function (s) { hb(0.42, 1.2, 0.42, s * 1.02, -0.3, -0.1); hb(0.5, 0.2, 0.5, s * 1.02, 0.3, -0.1, accent); }); }
+      if (hs === 'bun') { hb(0.7, 0.7, 0.7, 0, 1.15, -0.1); hb(0.82, 0.14, 0.82, 0, 0.88, -0.1, accent); }
+    }
+    if (cfg.head === 'horns') {
+      box(head, 1.66, 0.2, 1.66, '#d6232a', 0, 1.32, 0);
+      box(head, 0.26, 0.5, 0.26, '#e5303a', -0.5, 1.72, 0.1); box(head, 0.26, 0.5, 0.26, '#e5303a', 0.5, 1.72, 0.1);
+      box(head, 0.2, 0.22, 0.2, '#e5303a', -0.56, 2.05, 0.1); box(head, 0.2, 0.22, 0.2, '#e5303a', 0.56, 2.05, 0.1);
+    } else if (cfg.head === 'band') {
+      box(head, 1.66, 0.24, 1.66, accent, 0, 1.2, 0); box(head, 1.68, 0.08, 1.68, '#f7f0e6', 0, 1.2, 0); 
+    } else if (cfg.head === 'cap') {
+      box(head, 1.7, 0.6, 1.7, team.shirt, 0, 1.42, -0.02); box(head, 1.7, 0.14, 0.8, team.shirt, 0, 1.2, 1.0);
+      box(head, 0.5, 0.3, 0.06, team.c2, 0, 1.5, 0.84);
+    }
+    return M;
+  }
+
+  // ---------- 포즈 ----------
+  function P(o) {
+    var b = { aLsx: 0, aLsz: 8, aLex: 6, aLez: 0, aRsx: 0, aRsz: 8, aRex: 6, aRez: 0, legL: 0, legR: 0, liftL: 0, liftR: 0, headX: 0, headY: 0, lean: 0, dy: 0, shake: 0, roll: 0, face: 0 };
+    for (var k in o) b[k] = o[k];
+    return b;
+  }
+  var NUM = Object.keys(P({}));
+  function lerp(a, b, k) { return a + (b - a) * k; }
+  function motionPose(id, t) {
+    var s;
+    if (id === 'yes') { s = Math.sin(t * 9); return P({ aLsz: 150 + s * 6, aRsz: 150 + s * 6, aLex: 10, aRex: 10, face: 1, dy: Math.abs(Math.sin(t * 4.5)) * 0.6, headX: -0.25, legL: 6, legR: 6 }); }
+    if (id === 'headgrab') return P({ aLsz: 135, aRsz: 135, aLez: 80, aRez: 80, aLsx: 10, aRsx: 10, face: 2, headY: Math.sin(t * 6) * 0.1, roll: 0 });
+    if (id === 'clap') { var c = Math.sin(t * 11); return P({ aLsx: 55, aRsx: 55, aLsz: -22, aRsz: -22, aLex: 60 + c * 14, aRex: 60 + c * 14, aLez: -10, aRez: -10, face: 1, dy: 0, headX: 0 }); }
+    if (id === 'angry') { var st = Math.sin(t * 8); return P({ aLsz: 14 + Math.sin(t * 10) * 4, aRsz: 14 + Math.sin(t * 10) * 4, aLex: 40, aRex: 40, face: 3, legL: st * 10, legR: -st * 10, liftL: Math.max(0, st) * 0.3, liftR: Math.max(0, -st) * 0.3, shake: Math.sin(t * 14) * 0.03, headX: 0.1 }); }
+    if (id === 'sad') return P({ aLsz: 4, aRsz: 4, aLex: 4, aRex: 4, face: 4, headX: 0.3 + Math.sin(t * 3) * 0.04, lean: 0.18, dy: -0.1 });
+    if (id === 'wave') return P({ aRsz: 140, aRez: 20 + Math.sin(t * 7) * 22, face: 1, headY: 0 });
+    return P({});
+  }
+
+  function Actor(cfg, name, isMe, sc) {
+    this.isMe = isMe; this.name = name; this.y = 0; this.sc = sc || scene; this.seat = null; this.sitting = false; this.pending = null;
+    this.holder = new T.Group(); this.sc.add(this.holder);
+    var sh = new T.Mesh(new T.CircleGeometry(1.25, 8), new T.MeshBasicMaterial({ color: 0x3a2b3f, transparent: true, opacity: 0.22 }));
+    sh.rotation.x = -Math.PI / 2; sh.position.y = 0.03; this.holder.add(sh);
+    this.lab = document.createElement('div'); this.lab.className = 'lab' + (isMe ? ' me' : ''); this.lab.textContent = name; labelsEl.appendChild(this.lab);
+    this.setCfg(cfg);
+    this.x = (Math.random() - .5) * 30; this.z = 4 + Math.random() * 14; this.yaw = 0;
+    this.tx = null; this.tz = null; this.ph = Math.random() * 6; this.mo = null; this.faceNow = 0;
+    this.next = performance.now() + 800 + Math.random() * 2500; this.speed = isMe ? 8 : 4.5;
+  }
+  Actor.prototype.setCfg = function (cfg) {
+    if (this.M) this.holder.remove(this.M.root);
+    this.cfg = cfg; this.M = buildModel(cfg); this.holder.add(this.M.root); this.faceNow = -1;
+  };
+  Actor.prototype.motion = function (id) {
+    var dur = { yes: 2.4, headgrab: 2.6, clap: 2.6, angry: 2.4, sad: 3, wave: 2.6 }[id] || 2.4;
+    this.mo = { id: id, t0: performance.now() / 1000, dur: dur }; this.tx = null;
+  };
+  Actor.prototype.update = function (now, dt) {
+    var t = now / 1000, walking = false;
+    if (this.sitting) { this.tx = null; }
+    if (this.tx !== null) {
+      var dx = this.tx - this.x, dz = this.tz - this.z, d = Math.hypot(dx, dz), sp = this.speed * dt;
+      if (d < Math.max(0.05, sp)) { this.x = this.tx; this.z = this.tz; this.tx = null; if (this.pending) { var ps = this.pending; this.sit(ps); } }
+      else {
+        this.x += dx / d * sp; this.z += dz / d * sp; walking = true; this.ph += sp * 0.8;
+        var want = Math.atan2(dx, dz), diff = Math.atan2(Math.sin(want - this.yaw), Math.cos(want - this.yaw));
+        this.yaw += diff * Math.min(1, dt * 12);
+      }
+    }
+    if (!this.sitting) { this.x = Math.max(-BND.x, Math.min(BND.x, this.x)); this.z = Math.max(BND.z0, Math.min(BND.z1, this.z)); this.y += (GY(this.x, this.z) - this.y) * Math.min(1, dt * 14); }
+    var v = P({}); v.face = this.cfg.face | 0;
+    if (walking) {
+      var s = Math.sin(this.ph);
+      v.legL = s * 24; v.legR = -s * 24; v.liftL = Math.max(0, s) * 0.08; v.liftR = Math.max(0, -s) * 0.08;
+      v.aLsx = -s * 20; v.aRsx = s * 20; v.dy = Math.abs(Math.sin(this.ph)) * 0.07; v.roll = 0;
+    }
+    if (this.mo) {
+      var tt = t - this.mo.t0;
+      if (tt > this.mo.dur) this.mo = null;
+      else {
+        var k = Math.min(1, tt / 0.18, (this.mo.dur - tt) / 0.22), m = motionPose(this.mo.id, tt);
+        for (var i = 0; i < NUM.length; i++) v[NUM[i]] = lerp(v[NUM[i]], m[NUM[i]], k);
+        if (k > 0.3) v.face = m.face; else v.face = this.cfg.face | 0;
+      }
+    }
+    if (this.sitting) {
+      v.legL = 78; v.legR = 78; v.liftL = 0; v.liftR = 0; v.dy = -0.62 + Math.max(0, v.dy) * 0.3; v.lean = Math.min(v.lean, 0);
+    }
+    var M = this.M;
+    this.holder.position.set(this.x, this.y, this.z); this.holder.rotation.y = this.yaw;
+    M.root.position.set(v.shake, v.dy, 0); M.root.rotation.z = v.roll;
+    M.body.rotation.x = v.lean;
+    M.armL.sh.rotation.set(-v.aLsx * D2R, 0, -v.aLsz * D2R); M.armL.el.rotation.set(-v.aLex * D2R, 0, -v.aLez * D2R);
+    M.armR.sh.rotation.set(-v.aRsx * D2R, 0, v.aRsz * D2R); M.armR.el.rotation.set(-v.aRex * D2R, 0, v.aRez * D2R);
+    M.legL.rotation.x = -v.legL * D2R; M.legR.rotation.x = -v.legR * D2R; M.legL.position.y = 1.5 + v.liftL; M.legR.position.y = 1.5 + v.liftR;
+    M.head.rotation.set(v.headX, v.headY, 0);
+    if (v.face !== this.faceNow) { this.faceNow = v.face; M.headMesh.material[4] = M.faceMats[v.face]; }
+  };
+
+  // ---------- 장면 ----------
+  function groundTex() {
+    return mkTex(16, 16, function (g) {
+      px(g, '#ecd6b0', 0, 0, 16, 16); px(g, '#e8d0a8', 0, 0, 8, 8); px(g, '#e8d0a8', 8, 8, 8, 8);
+    }, 50, 40);
+  }
+  function tree(x, z, s) {
+    var g = new T.Group(); g.position.set(x, 0, z); g.scale.setScalar(s || 1); scene.add(g);
+    box(g, 0.9, 3, 0.9, '#8a5a3a', 0, 1.5, 0);
+    box(g, 4, 2.2, 4, '#4f9a55', 0, 4, 0); box(g, 3, 1.8, 3, '#5fae62', 0, 5.6, 0); box(g, 1.6, 1.2, 1.6, '#72c274', 0, 6.8, 0);
+  }
+  function lamp(x, z) {
+    var g = new T.Group(); g.position.set(x, 0, z); scene.add(g);
+    box(g, 0.34, 6, 0.34, '#59627f', 0, 3, 0); box(g, 1, 1, 1, '#f8e7a1', 0, 6.4, 0);
+  }
+  function buildScene() {
+    var ground = new T.Mesh(new T.PlaneGeometry(100, 80), new T.MeshLambertMaterial({ map: groundTex() }));
+    ground.rotation.x = -Math.PI / 2; ground.position.set(0, 0, 8); scene.add(ground);
+    // 붉은 길
+    var path = new T.Mesh(new T.PlaneGeometry(10, 36), new T.MeshLambertMaterial({ color: '#e3727a' }));
+    path.rotation.x = -Math.PI / 2; path.position.set(0, 0.02, 1); scene.add(path);
+    for (var i = -2; i <= 2; i += 4) { var st = new T.Mesh(new T.PlaneGeometry(0.4, 36), new T.MeshLambertMaterial({ color: '#f2a1a7' })); st.rotation.x = -Math.PI / 2; st.position.set(i * 2, 0.03, 1); scene.add(st); }
+    
+    // 잔디 + 울타리
+    [-1, 1].forEach(function (s) {
+      var gr = new T.Mesh(new T.BoxGeometry(12, 0.3, 26), mat('#7cc57a')); gr.position.set(s * 20, 0.1, 6); scene.add(gr);
+      box(scene, 12.4, 0.8, 0.4, '#a9743f', s * 20, 0.6, -7.2); box(scene, 12.4, 0.8, 0.4, '#a9743f', s * 20, 0.6, 19.2);
+    });
+    // 스타디움
+    var st = new T.Group(); st.position.set(0, 0, -22); scene.add(st);
+    box(st, 64, 11, 8, '#c9d4ea', 0, 5.5, 0);
+    box(st, 64, 1.4, 9, '#e5484d', 0, 11.6, 0); box(st, 64, 0.7, 9.4, '#f7f0e6', 0, 12.6, 0);
+    box(st, 56, 2.4, 6, '#b9c6e2', 0, 14.1, -0.5);
+    for (var k = -13; k <= 13; k++) {
+      if (Math.abs(k * 2.3) < 6.5) continue;
+      box(st, 1.3, 4.4, 0.4, '#8393b8', k * 2.3, 2.6, 4.05); box(st, 1.3, 0.8, 0.4, '#8393b8', k * 2.3, 5.3, 4.05);
+    }
+    box(st, 11, 7.2, 0.8, '#283257', 0, 3.6, 4.1); box(st, 12.4, 0.8, 1.2, '#f7f0e6', 0, 7.5, 4.2);
+    var sign = new T.Mesh(new T.PlaneGeometry(9, 2.2), new T.MeshBasicMaterial({
+      map: mkTex(72, 18, function (g) { px(g, '#f7f0e6', 0, 0, 72, 18); g.fillStyle = '#1f2b4d'; g.font = 'bold 13px "Jua","Noto Sans KR","Malgun Gothic",sans-serif'; g.textAlign = 'center'; g.textBaseline = 'middle'; g.fillText('스타디움 입구', 36, 10); })
+    }));
+    sign.position.set(0, 9.2, 4.5); st.add(sign);
+    var cols = ['#e5484d', '#f3c13a', '#3b6fd1', '#f7f0e6'];
+    for (var f = -14; f <= 14; f++) box(st, 0.9, 0.9, 0.2, cols[(f + 14) % 4], f * 2.1, 13.3, 4.2);
+    [-34, 34].forEach(function (x) { box(st, 0.8, 18, 0.8, '#8f9bb8', x, 9, 1); box(st, 4.4, 2.2, 1.4, '#f3d86a', x, 18.6, 1); });
+    // 나무, 가로등
+    [[-30, -8, 1.2], [30, -8, 1.2], [-33, 6, 1], [33, 6, 1], [-29, 18, 1.1], [29, 18, 1.1], [-24, -9, .9], [24, -9, .9]].forEach(function (p) { tree(p[0], p[1], p[2]); });
+    lamp(-8, -2); lamp(8, -2); lamp(-8, 12); lamp(8, 12);
+    // 벤치
+    [-14, 14].forEach(function (x) { box(scene, 4, 0.5, 1.4, '#a9743f', x, 0.9, 12); box(scene, 4, 1, 0.3, '#8f5f33', x, 1.5, 11.4); box(scene, 0.4, 0.9, 1.2, '#59627f', x - 1.6, 0.45, 12); box(scene, 0.4, 0.9, 1.2, '#59627f', x + 1.6, 0.45, 12); });
+    // 픽셀 구름
+    [[-40, 38, -70, 1.3], [30, 44, -80, 1.6], [-5, 34, -90, 1.1]].forEach(function (c) {
+      var g = new T.Group(); g.position.set(c[0], c[1], c[2]); g.scale.setScalar(c[3]); scene.add(g);
+      var m = new T.MeshBasicMaterial({ color: '#f6f9fd' });
+      box(g, 12, 2, 2, m, 0, 0, 0); box(g, 8, 2, 2, m, 2, 2, 0); box(g, 5, 2, 2, m, -3, 1.6, 0);
+    });
+  }
+
+
+  // ---------- 구성 ----------
+  var PRESETS = [
+    { body: 'm', skin: 1, hair: 'short', hairColor: 0, team: 'kor', number: 7, head: 'horns' },
+    { body: 'f', skin: 0, hair: 'ponytail', hairColor: 4, team: 'arg', number: 10, head: 'band' },
+    { body: 'm', skin: 3, hair: 'buzz', hairColor: 0, team: 'tog', number: 11, neck: 'scarf' },
+    { body: 'f', skin: 2, hair: 'twintail', hairColor: 6, team: 'fcb', number: 8, head: 'horns', hand: 'clappers' },
+    { body: 'm', skin: 4, hair: 'short', hairColor: 1, team: 'tog', number: 9, head: 'cap' },
+    { body: 'f', skin: 1, hair: 'long', hairColor: 2, team: 'mci', number: 3, head: 'band' },
+    { body: 'm', skin: 2, hair: 'bun', hairColor: 3, team: 'bra', number: 22, hand: 'megaphone' }
+  ];
+  var NAMES = ['하늘', '도윤', '서연', '민재', '지우', '유나', '태양', '보리', '다온', '라희', '시우', '아린'];
+  var MO = [['yes', '예스!'], ['headgrab', '머리 잡기'], ['clap', '박수'], ['angry', '화내기'], ['sad', '좌절'], ['wave', '인사']];
+  var plazaActors = [], stadActors = [], me;
+  var ONLINE = false, NET = null, myId = 0, hostId = 0, remotes = {}, allPreds = [], netTried = false, roomCode = '', RTC = null;
+  var yaw = 0.0, pitch = 0.38, dist = 30, camT = new T.Vector3();
+  var syaw = Math.PI, spitch = 0.42;
+
+  // ---------- 내 캐릭터 설정 (브라우저에 저장) ----------
+  var KEY = 'jikgwan.cfg.v1';
+  function defCfg() { return { name: '', body: 'm', skin: 1, hair: 'short', hairColor: 0, face: 0, team: 'tog', number: 10, head: 'none', neck: 'none', hand: 'none' }; }
+  var cfg = defCfg();
+  try { var sv = JSON.parse(localStorage.getItem(KEY) || 'null'); if (sv && TEAMS[sv.team]) cfg = Object.assign(cfg, sv); } catch (e) { }
+  cfg.number = Math.max(1, Math.min(99, parseInt(cfg.number, 10) || 10));
+  function saveCfg() { try { localStorage.setItem(KEY, JSON.stringify(cfg)); } catch (e) { } }
+
+  // ---------- 집 안 배경 ----------
+  function plankTex() {
+    var t = mkTex(4, 4, function (g) { px(g, '#dcb88a', 0, 0, 4, 4); px(g, '#d3ac7b', 0, 1, 4, 1); px(g, '#d6b083', 0, 2, 4, 1); px(g, '#cda274', 0, 3, 4, 1); }, 10, 8);
+    t.minFilter = T.LinearMipmapLinearFilter; t.generateMipmaps = true; t.needsUpdate = true; return t;
+  }
+  function buildRoom() {
+    var R = cscene;
+    var floor = new T.Mesh(new T.PlaneGeometry(50, 40), new T.MeshLambertMaterial({ map: plankTex() }));
+    floor.rotation.x = -Math.PI / 2; R.add(floor);
+    box(R, 60, 20, 1, '#f3e6d6', 0, 10, -6.5); box(R, 60, 4.4, 0.5, '#e8d0b4', 0, 2.2, -5.9); box(R, 60, 0.6, 0.7, '#fff8ee', 0, 4.5, -5.9);
+    box(R, 1, 20, 40, '#efe0cd', -20, 10, 10); box(R, 1, 20, 40, '#efe0cd', 20, 10, 10);
+    box(R, 8.4, 7.4, 0.5, '#fff8ee', -9.5, 9, -5.8); box(R, 7, 6, 0.2, '#a9d4f5', -9.5, 9, -5.5);
+    box(R, 1.6, 1.6, 0.1, '#ffe27a', -7.6, 10.4, -5.35); box(R, 2.6, 1.0, 0.1, '#ffffff', -11.2, 8.4, -5.35);
+    box(R, 0.6, 6, 0.3, '#fff8ee', -9.5, 9, -5.3); box(R, 7, 0.6, 0.3, '#fff8ee', -9.5, 9, -5.3);
+    box(R, 1.8, 7.8, 0.6, '#e3727a', -14.4, 9, -5.4); box(R, 1.8, 7.8, 0.6, '#e3727a', -4.6, 9, -5.4);
+    box(R, 7, 0.7, 1.8, '#a9743f', -9.5, 3.0, -4.9); box(R, 0.7, 2.6, 1.4, '#8f5f33', -12.6, 1.4, -4.9); box(R, 0.7, 2.6, 1.4, '#8f5f33', -6.4, 1.4, -4.9);
+    box(R, 1.2, 0.4, 1.2, '#6b4a2a', -11, 3.55, -4.9); box(R, 0.4, 0.9, 0.4, '#f3c13a', -11, 4.2, -4.9); box(R, 1.2, 1.0, 1.2, '#f3c13a', -11, 5.0, -4.9);
+    var ball = new T.Mesh(new T.SphereGeometry(0.95, 6, 5), new T.MeshLambertMaterial({ color: '#fbf6ee' })); ball.position.set(-8.2, 4.4, -4.9); R.add(ball);
+    box(R, 0.5, 0.5, 0.2, '#2d2233', -8.2, 4.5, -4.0); box(R, 0.5, 0.5, 0.4, '#2d2233', -7.6, 4.1, -4.4);
+    box(R, 7, 13, 2.8, '#b98a5a', 11, 6.5, -4.3); box(R, 0.4, 12, 0.2, '#7a5230', 11, 6.5, -2.8);
+    box(R, 0.7, 1.4, 0.4, '#f3d86a', 10.4, 6.5, -2.7); box(R, 0.7, 1.4, 0.4, '#f3d86a', 11.6, 6.5, -2.7); box(R, 7.4, 0.6, 3.2, '#9c6a3d', 11, 13.2, -4.3);
+    box(R, 4, 8.4, 0.5, '#8f5f33', 5.2, 6.2, -5.7); box(R, 3.2, 7.6, 0.2, '#d4e9f8', 5.2, 6.2, -5.4); box(R, 1.0, 5, 0.1, '#ffffff', 4.6, 6.6, -5.25);
+    box(R, 0.5, 8, 0.5, '#59627f', -16, 4, -3); box(R, 2.4, 2.4, 2.4, '#f8e7a1', -16, 9, -3); box(R, 1.8, 0.5, 1.8, '#59627f', -16, 0.3, -3);
+    box(R, 2, 1.8, 2, '#c9784a', 15.5, 0.9, -3); box(R, 1.6, 1.6, 1.6, '#4f9a55', 15.5, 2.6, -3); box(R, 1.1, 1.4, 1.1, '#62b066', 15.9, 3.9, -3); box(R, 1.0, 1.2, 1.0, '#72c274', 15.1, 3.4, -3);
+    var rug = new T.Mesh(new T.CylinderGeometry(5.6, 5.6, 0.14, 12), mat('#e3727a')); rug.position.set(0, 0.07, 0); R.add(rug);
+    var rug2 = new T.Mesh(new T.CylinderGeometry(3.9, 3.9, 0.16, 12), mat('#f2a1a7')); rug2.position.set(0, 0.08, 0); R.add(rug2);
+    box(R, 2.4, 1.2, 2.4, '#3b6fd1', 6.4, 0.6, 2.8); box(R, 2.4, 0.5, 2.4, '#f7f0e6', 6.4, 1.45, 2.8);
+  }
+  var prevG = null, prevTarget = -0.3, jerseyG = null;
+  function rebuildPreview() {
+    var keep = prevG ? prevG.rotation.y : prevTarget;
+    if (prevG) cscene.remove(prevG);
+    var M = buildModel(cfg); M.headMesh.material[4] = M.faceMats[cfg.face | 0];
+    M.armL.sh.rotation.z = -8 * D2R; M.armR.sh.rotation.z = 8 * D2R; M.armL.el.rotation.x = -6 * D2R; M.armR.el.rotation.x = -6 * D2R;
+    if (cfg.hand === 'clappers') { M.armL.sh.rotation.set(-0.5, 0, -0.1); M.armR.sh.rotation.set(-0.5, 0, 0.1); M.armL.el.rotation.x = -0.6; M.armR.el.rotation.x = -0.6; }
+    if (cfg.hand === 'megaphone') { M.armR.sh.rotation.set(-0.6, 0, 0.15); M.armR.el.rotation.x = -1.0; }
+    prevG = new T.Group(); prevG.add(M.root); prevG.position.y = 0.16; prevG.rotation.y = keep; cscene.add(prevG);
+    if (jerseyG) cscene.remove(jerseyG);
+    var t = TEAMS[cfg.team]; jerseyG = new T.Group(); jerseyG.position.set(-1.4, 8.6, -5.2); cscene.add(jerseyG);
+    box(jerseyG, 4.4, 4.6, 0.5, t.shirt, 0, 0, 0); box(jerseyG, 1.8, 1.6, 0.5, t.shirt, -3.0, 1.5, 0); box(jerseyG, 1.8, 1.6, 0.5, t.shirt, 3.0, 1.5, 0);
+    box(jerseyG, 1.9, 0.5, 0.52, t.c2, -3.0, 0.9, 0); box(jerseyG, 1.9, 0.5, 0.52, t.c2, 3.0, 0.9, 0);
+    box(jerseyG, 1.6, 0.7, 0.54, t.c2, 0, 2.2, 0);
+    if (t.pattern === 'stripes') { box(jerseyG, 0.7, 4.6, 0.54, t.c2, -1.4, 0, 0); box(jerseyG, 0.7, 4.6, 0.54, t.c2, 1.4, 0, 0); }
+    box(jerseyG, 0.5, 0.6, 0.4, '#8f9bb8', 0, 2.9, 0);
+  }
+  function applyCfg() { rebuildPreview(); saveCfg(); }
+
+  // ---------- 스타디움 안 ----------
+  var TIER_D = 2.2, TIER_H = 1.6, Z0 = -4, NT = 10, SB = { x: 33, z0: -8, z1: 17 };
+  var POD_X = [-16, 0, 16], POD_COL = ['#e5484d', '#3b6fd1', '#f3c13a'], POD_DEF = ['ㄱ팟', 'ㄴ팟', 'ㄷ팟'];
+  var pods = [], seats = [], seatMeshes = [], tierMeshes = [], builtStad = false;
+  function stadY(x, z) {
+    if (z < Z0) return 0;
+    var k = Math.min(NT - 1, Math.floor((z - Z0) / TIER_D));
+    return (k + 1) * TIER_H;
+  }
+  function buildStadium() {
+    var S = sscene;
+    // 경기장
+    var pt = mkTex(2, 1, function (g) { px(g, '#5fae62', 0, 0, 1, 1); px(g, '#6fbd6f', 1, 0, 1, 1); }, 9, 1);
+    pt.minFilter = T.LinearMipmapLinearFilter; pt.generateMipmaps = true; pt.needsUpdate = true;
+    var pitch = new T.Mesh(new T.PlaneGeometry(90, 44), new T.MeshLambertMaterial({ map: pt })); pitch.rotation.x = -Math.PI / 2; pitch.position.set(0, 0.02, -31); S.add(pitch);
+    var around = new T.Mesh(new T.PlaneGeometry(200, 160), mat('#cfc7b8')); around.rotation.x = -Math.PI / 2; around.position.set(0, -0.02, -30); S.add(around);
+    var line = '#f7f3ea';
+    box(S, 84, 0.1, 0.8, line, 0, 0.08, -10); box(S, 84, 0.1, 0.8, line, 0, 0.08, -52); box(S, 0.8, 0.1, 42, line, -42, 0.08, -31); box(S, 0.8, 0.1, 42, line, 42, 0.08, -31); box(S, 0.8, 0.1, 42, line, 0, 0.08, -31);
+    var ring = new T.Mesh(new T.RingGeometry(5.6, 6.5, 16), new T.MeshBasicMaterial({ color: line, side: T.DoubleSide })); ring.rotation.x = -Math.PI / 2; ring.position.set(0, 0.09, -31); S.add(ring);
+    [-1, 1].forEach(function (sd) {
+      var gx = sd * 43.5;
+      box(S, 0.7, 5, 0.7, '#f7f3ea', gx, 2.5, -35.5); box(S, 0.7, 5, 0.7, '#f7f3ea', gx, 2.5, -26.5); box(S, 0.7, 0.7, 9.7, '#f7f3ea', gx, 5, -31);
+      box(S, 0.5, 5, 9, '#d9d4c8', gx + sd * 1.8, 2.5, -31); box(S, 3.6, 0.5, 9, '#d9d4c8', gx + sd * 0.0, 0.25, -31);
+    });
+    var ball = new T.Mesh(new T.SphereGeometry(0.9, 6, 5), new T.MeshLambertMaterial({ color: '#fbf6ee' })); ball.position.set(0, 0.9, -31); S.add(ball);
+    // 광고판
+    var adc = ['#e5484d', '#f3c13a', '#3b6fd1', '#f7f0e6', '#6fcf97'];
+    for (var a = -10; a <= 10; a++) box(S, 4, 1.5, 0.5, adc[(a + 10) % 5], a * 4.2, 0.75, -9.2);
+    // 우리 쪽 관중석(계단) + 뒤쪽 벽
+    for (var k = 0; k < NT; k++) {
+      var h = (k + 1) * TIER_H, t = box(S, 68, h, TIER_D, k % 2 ? '#cfd8ea' : '#c3cee6', 0, h / 2, Z0 + k * TIER_D + TIER_D / 2);
+      tierMeshes.push(t);
+      box(S, 68, 0.5, 0.7, '#8c9cc8', 0, h + 0.25, Z0 + k * TIER_D + TIER_D - 0.4);
+    }
+    box(S, 70, 24, 1, '#b9c6e2', 0, 12, Z0 + NT * TIER_D + 0.6); box(S, 1, 24, 30, '#b9c6e2', -34.5, 12, 6); box(S, 1, 24, 30, '#b9c6e2', 34.5, 12, 6);
+    box(S, 70, 1.2, 1.4, '#e5484d', 0, 25, Z0 + NT * TIER_D + 0.6);
+    // 팟 (3개 × 6석)
+    for (var p = 0; p < 3; p++) {
+      pods.push({ name: POD_DEF[p], def: POD_DEF[p], x: POD_X[p], color: POD_COL[p] });
+      for (var s = 0; s < 6; s++) {
+        var row = Math.floor(s / 3), col = s % 3, tk = 3 + row, top = (tk + 1) * TIER_H, sz = Z0 + tk * TIER_D + 1.15, sx = POD_X[p] + (col - 1) * 2.1;
+        var g = new T.Group(); g.position.set(sx, top, sz); S.add(g);
+        var sm = box(g, 1.6, 0.6, 1.3, POD_COL[p], 0, 0.3, 0); box(g, 1.6, 1.5, 0.35, POD_COL[p], 0, 0.95, 0.62);
+        sm.userData.seat = seats.length; seatMeshes.push(sm);
+        seats.push({ pod: p, idx: s, x: sx, z: sz - 0.1, y: top, occ: null });
+      }
+      box(S, 7.2, 0.3, 5.6, POD_COL[p], POD_X[p], 3 * TIER_H + 0.05, Z0 + 3 * TIER_D + 2.4);
+    }
+    // 맞은편 관중석 + 관중
+    var cols = ['#e5484d', '#3b6fd1', '#f7f0e6', '#f3c13a', '#2d2233'], inst = {};
+    cols.forEach(function (c) { inst[c] = []; });
+    for (var fk = 0; fk < 9; fk++) {
+      var fh = (fk + 1) * TIER_H, fz = -55 - fk * TIER_D;
+      box(S, 90, fh, TIER_D, fk % 2 ? '#cfd8ea' : '#c3cee6', 0, fh / 2, fz);
+      for (var x = -42; x <= 42; x += 1.9) { if (Math.random() < 0.28) continue; inst[cols[Math.floor(Math.random() * 4.4)]].push([x + (Math.random() - .5) * .3, fh + 0.7, fz]); }
+    }
+    cols.forEach(function (c) {
+      var arr = inst[c]; if (!arr.length) return;
+      var im = new T.InstancedMesh(new T.BoxGeometry(1.2, 1.4, 1.0), new T.MeshLambertMaterial({ color: c }), arr.length), m4 = new T.Matrix4();
+      arr.forEach(function (p, i) { m4.makeTranslation(p[0], p[1], p[2]); im.setMatrixAt(i, m4); }); S.add(im);
+    });
+    box(S, 90, 26, 1, '#b9c6e2', 0, 13, -55 - 9 * TIER_D); box(S, 16, 7, 1.2, '#1f2a46', 0, 20, -55 - 9 * TIER_D + 1);
+    box(S, 14, 5, 0.3, '#2f7a58', 0, 20, -55 - 9 * TIER_D + 1.8); [-4.5, -1.5, 1.5, 4.5].forEach(function (x) { box(S, 2, 2, 0.2, '#f3c13a', x, 20, -55 - 9 * TIER_D + 2); });
+    [-52, 52].forEach(function (x) { box(S, 1, 26, 1, '#8f9bb8', x, 13, -30); box(S, 5, 3, 2, '#f3d86a', x, 27, -30); });
+    box(S, 1, 26, 60, '#b9c6e2', -46, 13, -32); box(S, 1, 26, 60, '#b9c6e2', 46, 13, -32);
+    // 팟 이름표
+    pods.forEach(function (pd, i) { var d = document.createElement('div'); d.className = 'lab pod'; labelsEl.appendChild(d); pd.lab = d;
+      ['pointerdown', 'pointerup'].forEach(function (ev) { d.addEventListener(ev, function (e) { e.stopPropagation(); }); });
+      d.addEventListener('click', function (e) { e.stopPropagation(); if (me && me.seat && me.seat.pod === i) openRename(); }); });
+    builtStad = true;
+  }
+  function podCount(i) { var n = 0; seats.forEach(function (s) { if (s.pod === i && s.occ) n++; }); return n; }
+  function refreshPodLabels() {
+    pods.forEach(function (pd, i) { var n = podCount(i); if (n === 0) pd.name = pd.def; var mine = !!(me && me.seat && me.seat.pod === i); pd.lab.textContent = pd.name + '  ' + n + '/6' + (mine ? '  ✎' : ''); pd.lab.classList.toggle('editable', mine); });
+    if (typeof refreshVoice === 'function' && me) refreshVoice();
+    if (typeof rtcSync === 'function') rtcSync();
+  }
+  var toastEl = document.getElementById('toast'), toastT = 0;
+  function toast(msg) { toastEl.textContent = msg; toastEl.style.opacity = 1; clearTimeout(toastT); toastT = setTimeout(function () { toastEl.style.opacity = 0; }, 2200); }
+
+  Actor.prototype.sit = function (seat) {
+    if (seat.occ && seat.occ !== this) return false;
+    if (this.seat) this.seat.occ = null;
+    this.seat = seat; seat.occ = this; this.pending = null; this.sitting = true; this.tx = null; this.mo = null;
+    this.x = seat.x; this.z = seat.z; this.y = seat.y; this.yaw = Math.PI; this.next = performance.now() + 2500 + Math.random() * 4000;
+    refreshPodLabels(); if (this.isMe && ONLINE) netSend({ t: 'sit', pod: seat.pod, idx: seat.idx });
+    if (this.isMe) { setSeated(true); if (!window.__podHint) { window.__podHint = 1; toast('팟 이름표를 누르면 이름을 바꿀 수 있어요'); } }
+    return true;
+  };
+  Actor.prototype.stand = function () {
+    if (!this.seat) return;
+    var s = this.seat; s.occ = null; this.seat = null; this.sitting = false; this.pending = null;
+    this.z = s.z - 1.5; refreshPodLabels(); if (this.isMe && ONLINE) netSend({ t: 'stand' }); if (this.isMe) setSeated(false);
+  };
+  Actor.prototype.goSeat = function (seat) {
+    if (seat.occ && seat.occ !== this) { toast('이미 앉아 있는 자리예요'); return; }
+    if (this.sitting) this.stand();
+    this.pending = seat; this.tx = seat.x; this.tz = seat.z - 1.6; this.mo = null;
+  };
+  var _mo = Actor.prototype.motion;
+  Actor.prototype.motion = function (id, nosend) { _mo.call(this, id); if (this.isMe && ONLINE && !nosend) netSend({ t: 'mo', id: id }); };
+  var seatedFlag = false;
+  function setSeated(v) { seatedFlag = v; refreshBody(); if (typeof refreshVoice === 'function') refreshVoice(); }
+
+  function makeStadiumActors() {
+    var seatPlan = [0, 1, 4, 6, 8, 9, 10, 11, 13, 15, 17], i, n = 0;
+    seatPlan.forEach(function (si) {
+      var c = Object.assign({}, PRESETS[n % PRESETS.length]); c.hairColor = (c.hairColor + n) % HAIRC.length; if (n % 3 === 1) c.body = c.body === 'm' ? 'f' : 'm';
+      var a = new Actor(c, NAMES[(n + 1) % NAMES.length], false, sscene); a.sit(seats[si]); stadActors.push(a); n++;
+    });
+    for (i = 0; i < 2; i++) {
+      var c2 = Object.assign({}, PRESETS[(i + 4) % PRESETS.length]); var w = new Actor(c2, NAMES[(i + 9) % NAMES.length], false, sscene);
+      w.x = -10 + i * 20; w.z = -6; w.wander = true; stadActors.push(w);
+    }
+  }
+
+  // ---------- 꾸미기 패널 ----------
+  var HAIR_NAMES = [['short', '짧은 머리'], ['buzz', '스포츠 컷'], ['bob', '단발'], ['long', '긴 머리'], ['ponytail', '포니테일'], ['twintail', '양갈래'], ['bun', '똥머리'], ['none', '없음']];
+  var FACE_NAMES = ['기본', '활짝', '놀람', '화남', '슬픔'];
+  var TABS = [['base', '기본'], ['hair', '머리'], ['face', '얼굴'], ['kit', '유니폼'], ['gear', '응원 도구']], tabNow = 'base';
+  var tabsEl = document.getElementById('tabs'), pbody = document.getElementById('pbody');
+  function E(tag, cls, txt) { var n = document.createElement(tag); if (cls) n.className = cls; if (txt != null) n.textContent = txt; return n; }
+  function set(k, v) { cfg[k] = v; applyCfg(); renderBody(); }
+  function chips(list, key) {
+    var w = E('div', 'chips');
+    list.forEach(function (it) { var b = E('button', 'chip' + (cfg[key] === it[0] ? ' on' : ''), it[1]); b.type = 'button'; b.onclick = function () { set(key, it[0]); }; w.appendChild(b); });
+    return w;
+  }
+  function swatches(list, key) {
+    var w = E('div', 'sws');
+    list.forEach(function (c, i) { var b = E('button', 'sw' + (cfg[key] === i ? ' on' : '')); b.type = 'button'; b.style.background = c; b.setAttribute('aria-label', '색 ' + (i + 1)); b.onclick = function () { set(key, i); }; w.appendChild(b); });
+    return w;
+  }
+  function grp(title, node) { var g = E('div', 'grp'); g.appendChild(E('h3', '', title)); g.appendChild(node); pbody.appendChild(g); return g; }
+  function renderTabs() {
+    tabsEl.innerHTML = '';
+    TABS.forEach(function (t) { var b = E('button', 'tab' + (tabNow === t[0] ? ' on' : ''), t[1]); b.type = 'button'; b.setAttribute('role', 'tab'); b.onclick = function () { tabNow = t[0]; renderTabs(); renderBody(); }; tabsEl.appendChild(b); });
+  }
+  function renderBody() {
+    var keep = pbody.scrollTop; pbody.innerHTML = '';
+    if (tabNow === 'base') {
+      var inp = E('input', 'txt'); inp.type = 'text'; inp.maxLength = 8; inp.placeholder = '이름 (최대 8자)'; inp.value = cfg.name || ''; inp.setAttribute('aria-label', '이름');
+      inp.oninput = function () { cfg.name = inp.value.slice(0, 8); saveCfg(); };
+      grp('이름', inp);
+      grp('몸', chips([['m', '남자'], ['f', '여자']], 'body'));
+      grp('피부색', swatches(SKINS, 'skin'));
+    } else if (tabNow === 'hair') {
+      grp('머리 모양', chips(HAIR_NAMES, 'hair'));
+      grp('머리색', swatches(HAIRC, 'hairColor'));
+    } else if (tabNow === 'face') {
+      grp('표정', chips(FACE_NAMES.map(function (n, i) { return [i, n]; }), 'face'));
+    } else if (tabNow === 'kit') {
+      TEAM_GROUPS.forEach(function (g) {
+        var w = E('div', 'teams');
+        g[1].forEach(function (tm) {
+          var t = TEAMS[tm[0]], b = E('button', 'team' + (cfg.team === tm[0] ? ' on' : '')); b.type = 'button';
+          var i1 = E('i'); i1.style.background = t.shirt; var i2 = E('i'); i2.style.background = t.shorts;
+          b.appendChild(i1); b.appendChild(i2); b.appendChild(E('span', '', tm[1])); b.onclick = function () { set('team', tm[0]); }; w.appendChild(b);
+        });
+        grp(g[0], w);
+      });
+      var row = E('div', 'num'), minus = E('button', 'btn', '−'), plus = E('button', 'btn', '+'), out = E('output', '', String(cfg.number));
+      minus.type = plus.type = 'button';
+      minus.onclick = function () { cfg.number = cfg.number <= 1 ? 99 : cfg.number - 1; applyCfg(); out.textContent = cfg.number; };
+      plus.onclick = function () { cfg.number = cfg.number >= 99 ? 1 : cfg.number + 1; applyCfg(); out.textContent = cfg.number; };
+      row.appendChild(minus); row.appendChild(out); row.appendChild(plus);
+      [7, 9, 10, 11, 22].forEach(function (n) { var c = E('button', 'chip', String(n)); c.type = 'button'; c.onclick = function () { cfg.number = n; applyCfg(); out.textContent = n; }; row.appendChild(c); });
+      grp('등번호', row);
+    } else if (tabNow === 'gear') {
+      grp('머리', chips([['none', '없음'], ['horns', '뿔 머리띠'], ['band', '응원 머리띠'], ['cap', '캡']], 'head'));
+      grp('목', chips([['none', '없음'], ['scarf', '머플러']], 'neck'));
+      grp('손', chips([['none', '없음'], ['clappers', '클래퍼'], ['megaphone', '확성기']], 'hand'));
+    }
+    pbody.scrollTop = keep;
+  }
+  function rnd(a) { return a[Math.floor(Math.random() * a.length)]; }
+  document.getElementById('rand').onclick = function () {
+    cfg.body = rnd(['m', 'f']); cfg.skin = Math.floor(Math.random() * SKINS.length); cfg.hair = rnd(HAIR_NAMES)[0]; cfg.hairColor = Math.floor(Math.random() * HAIRC.length);
+    cfg.face = Math.floor(Math.random() * 5); cfg.team = rnd(Object.keys(TEAMS)); cfg.number = 1 + Math.floor(Math.random() * 99);
+    cfg.head = rnd(['none', 'horns', 'band', 'cap']); cfg.neck = rnd(['none', 'scarf']); cfg.hand = rnd(['none', 'none', 'clappers', 'megaphone']);
+    applyCfg(); renderBody();
+  };
+
+  // ---------- 은은한 관중 소리 ----------
+  var AC = null, ambGain = null, soundOn = true;
+  function startAmb() {
+    try {
+      if (!AC) {
+        AC = new (window.AudioContext || window.webkitAudioContext)();
+        var len = AC.sampleRate * 4, buf = AC.createBuffer(1, len, AC.sampleRate), d = buf.getChannelData(0), last = 0;
+        for (var i = 0; i < len; i++) { var w = Math.random() * 2 - 1; last = (last + 0.03 * w) / 1.03; d[i] = last * 4; }
+        ambGain = AC.createGain(); ambGain.gain.value = soundOn ? 0.5 : 0; ambGain.connect(AC.destination);
+        var layer = function (freq, q, gain, lfoHz, depth) {
+          var src = AC.createBufferSource(); src.buffer = buf; src.loop = true;
+          var f = AC.createBiquadFilter(); f.type = 'bandpass'; f.frequency.value = freq; f.Q.value = q;
+          var g = AC.createGain(); g.gain.value = gain;
+          var o = AC.createOscillator(); o.frequency.value = lfoHz; var og = AC.createGain(); og.gain.value = depth; o.connect(og); og.connect(g.gain); o.start();
+          src.connect(f); f.connect(g); g.connect(ambGain); src.start(0, Math.random() * 2);
+        };
+        layer(420, 0.5, 0.22, 0.11, 0.12); layer(900, 0.7, 0.12, 0.07, 0.08); layer(1800, 1.0, 0.04, 0.17, 0.03);
+      }
+      if (AC.state === 'suspended') AC.resume();
+    } catch (e) { }
+  }
+  function setAmbLevel(l) { if (ambGain) ambGain.gain.value = soundOn ? l : 0; }
+
+
+
+  // ---------- 팟 음성 (같은 팟 사람 소리만) : 마이크 켜기/끄기 + 볼륨 ----------
+  var VKEY = 'jikgwan.voice.v1', vstate = { vol: 0.8 };
+  try { var vv = JSON.parse(localStorage.getItem(VKEY) || 'null'); if (vv && typeof vv.vol === 'number') vstate.vol = Math.max(0, Math.min(1, vv.vol)); } catch (e) { }
+  var micOn = false, micStream = null, micCtx = null, micAn = null, micBuf = null, micLevel = 0;
+  var vox = E('div'); vox.id = 'voice'; document.body.appendChild(vox);
+  var vTitle = E('div', 'vt', ''), micBtn = E('button', 'btn mic off', ''), meter = E('div', 'meter'), meterI = E('i'); meter.appendChild(meterI);
+  var vrow = E('label', 'vrow'), vsl = E('input'); vsl.type = 'range'; vsl.min = 0; vsl.max = 100; vsl.value = Math.round(vstate.vol * 100); vsl.setAttribute('aria-label', '팟 친구 목소리 볼륨');
+  var vnum = E('output', '', vsl.value + '%'); vrow.appendChild(E('span', '', '볼륨')); vrow.appendChild(vsl); vrow.appendChild(vnum);
+  micBtn.type = 'button'; var vnote = E('div', 'vn', '');
+  var mrow = E('div', 'mrow'); mrow.appendChild(micBtn); mrow.appendChild(meter); vox.appendChild(vTitle); vox.appendChild(mrow); vox.appendChild(vrow);
+  vsl.oninput = function () { vstate.vol = vsl.value / 100; vnum.textContent = vsl.value + '%'; try { localStorage.setItem(VKEY, JSON.stringify(vstate)); } catch (e) { } };
+  var MIC_SVG = '<svg viewBox="0 0 10 12" width="22" height="26" shape-rendering="crispEdges" aria-hidden="true"><g fill="#2b2850"><rect x="3" y="0" width="4" height="7"/><rect x="1" y="5" width="1" height="3"/><rect x="8" y="5" width="1" height="3"/><rect x="2" y="8" width="6" height="1"/><rect x="4" y="9" width="2" height="2"/><rect x="2" y="11" width="6" height="1"/></g>';
+  function micPaint() {
+    micBtn.innerHTML = MIC_SVG + (micOn ? '' : '<path d="M0.5 0.5 L9.5 11.5" stroke="#e5244b" stroke-width="1.6" fill="none"/>') + '</svg>';
+    micBtn.appendChild(E('span', 'onoff', micOn ? 'ON' : 'OFF'));
+    micBtn.className = 'btn mic ' + (micOn ? 'on' : 'off'); micBtn.setAttribute('aria-pressed', micOn ? 'true' : 'false'); micBtn.setAttribute('aria-label', micOn ? '마이크 켜짐, 누르면 끔' : '마이크 꺼짐, 누르면 켬');
+    vnote.textContent = ''; if (typeof micTop !== 'undefined' && micTop) refreshVoice();
+  }
+  function micStop(quiet) {
+    var was = micOn; if (RTC) { RTC.mic = null; rtcMicSwap(); } micOn = false; micLevel = 0; meterI.style.width = '0'; micPaint(); if (was && !quiet) toast('마이크 OFF');
+    if (micStream) { micStream.getTracks().forEach(function (t) { t.stop(); }); micStream = null; }
+    if (micCtx) { try { micCtx.close(); } catch (e) { } micCtx = null; }
+  }
+  function micStart() {
+    if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) { toast('이 브라우저에선 마이크를 쓸 수 없어요'); return; }
+    navigator.mediaDevices.getUserMedia({ audio: { echoCancellation: true, noiseSuppression: true } }).then(function (st) {
+      if (!me.sitting) { st.getTracks().forEach(function (t) { t.stop(); }); return; }
+      micStream = st; micCtx = new (window.AudioContext || window.webkitAudioContext)(); var src = micCtx.createMediaStreamSource(st);
+      micAn = micCtx.createAnalyser(); micAn.fftSize = 512; micBuf = new Uint8Array(micAn.fftSize); src.connect(micAn);
+      micOn = true; micPaint(); toast('마이크 ON'); if (RTC) { RTC.mic = st; rtcMicSwap(); }
+    }).catch(function () { toast('마이크를 쓸 수 없어요 (권한 또는 미리보기 제한)'); });
+  }
+  micBtn.onclick = function (e) { e.stopPropagation(); if (micOn) micStop(); else micStart(); };
+  function micTick() {
+    if (!micOn || !micAn) return; micAn.getByteTimeDomainData(micBuf); var m = 0;
+    for (var i = 0; i < micBuf.length; i++) m = Math.max(m, Math.abs(micBuf[i] - 128));
+    micLevel = Math.min(1, m / 60); meterI.style.width = Math.round(micLevel * 100) + '%';
+  }
+  var voiceOpen = false, micTop = E('button', 'btn mictop'); micTop.type = 'button'; micTop.style.display = 'none'; micTop.setAttribute('aria-label', '음성 설정 열기');
+  micTop.onclick = function (e) { e.stopPropagation(); voiceOpen = !voiceOpen; refreshVoice(); };
+  (function () { var g = document.querySelector('.top > div:last-child'); if (g) g.insertBefore(micTop, g.firstChild); })();
+  function refreshVoice() {
+    var on = mode === 'stadium' && me && me.sitting; micTop.style.display = on ? '' : 'none'; if (!on) voiceOpen = false; vox.style.display = on && voiceOpen ? 'flex' : 'none';
+    micTop.innerHTML = MIC_SVG + (micOn ? '' : '<path d="M0.5 0.5 L9.5 11.5" stroke="#e5244b" stroke-width="1.6" fill="none"/>') + '</svg>'; micTop.className = 'btn mictop ' + (micOn ? 'on' : 'off') + (voiceOpen ? ' open' : '');
+    if (on) { var n = podCount(me.seat.pod); vTitle.textContent = pods[me.seat.pod].name + ' 음성 · ' + n + '명'; }
+    else if (micOn) micStop(true);
+  }
+  micPaint();
+
+  // ---------- 응원 기능 (웨이브 · 점수판 · 스코어 예측) ----------
+  var score = { h: 0, a: 0 }, locked = false, myPred = null, npcPred = {};
+  var sbEl = E('div', 'stad-only', ''); sbEl.id = 'sb'; document.body.appendChild(sbEl);
+  var cm = E('div'); cm.id = 'cmodal'; document.body.appendChild(cm);
+  function refreshSB() {
+    sbEl.innerHTML = '';
+    sbEl.classList.toggle('empty', !match); if (!match) return;
+    sbEl.appendChild(E('span', 't', match.home)); sbEl.appendChild(E('b', '', score.h + ' : ' + score.a)); sbEl.appendChild(E('span', 't', match.away));
+    sbEl.appendChild(E('em', '', locked ? '예측 마감' : '전반 · 예측 가능'));
+  }
+  function ensureNpcPred() {
+    stadActors.forEach(function (a) { if (!a.isMe && !a.wander && !npcPred[a.name]) npcPred[a.name] = [Math.floor(Math.random() * 3), Math.floor(Math.random() * 3)]; });
+  }
+  function stepper(label, get, set, dis) {
+    var w = E('div', 'step'); w.appendChild(E('span', '', label));
+    var m = E('button', 'btn', '−'), o = E('output', '', String(get())), pl = E('button', 'btn', '+'); m.type = pl.type = 'button'; m.disabled = pl.disabled = !!dis;
+    m.onclick = function () { set(Math.max(0, get() - 1)); o.textContent = get(); }; pl.onclick = function () { set(Math.min(20, get() + 1)); o.textContent = get(); };
+    w.appendChild(m); w.appendChild(o); w.appendChild(pl); return w;
+  }
+  function closeCM() { cm.style.display = 'none'; cm.innerHTML = ''; cmKind = ''; boothTmp = null; }
+  function openCM(title, fill) {
+    cm.innerHTML = ''; var c = E('div', 'card'); c.appendChild(E('h2', '', title)); fill(c);
+    var cl = E('button', 'btn', '닫기'); cl.type = 'button'; cl.onclick = closeCM; c.appendChild(cl); cm.appendChild(c); cm.style.display = 'flex';
+  }
+  var match = null, cmKind = '', boothTmp = null;
+  function myPredNow() { if (ONLINE) { for (var i = 0; i < allPreds.length; i++) if (allPreds[i].id === myId) return allPreds[i].p; return null; } return myPred; }
+  function rerenderBooth() { if (cmKind === 'booth' && cm.style.display === 'flex') openBooth(true); }
+  function openBooth(keep) {
+    if (!ONLINE) ensureNpcPred();
+    if (!keep || !boothTmp) boothTmp = (myPredNow() || [0, 0]).slice();
+    var tmp = boothTmp, mine = myPredNow();
+    openCM('스코어 예측 부스', function (c) {
+      if (!match) c.appendChild(E('p', 'sub', '아직 등록된 경기가 없어요. 방장이 경기를 등록하면 예측할 수 있어요.'));
+      else {
+        c.appendChild(E('p', 'sub', match.home + ' vs ' + match.away + (locked ? ' · 전반이 끝나 예측이 마감됐어요.' : ' · 전반 종료 때까지 바꿀 수 있어요.')));
+        c.appendChild(stepper(match.home, function () { return tmp[0]; }, function (v) { tmp[0] = v; }, locked));
+        c.appendChild(stepper(match.away, function () { return tmp[1]; }, function (v) { tmp[1] = v; }, locked));
+        var ok = E('button', 'btn go', mine ? '예측 바꾸기' : '예측 확정'); ok.type = 'button'; ok.disabled = locked;
+        ok.onclick = function () { if (ONLINE) netSend({ t: 'pred', h: tmp[0], a: tmp[1] }); else myPred = tmp.slice(); toast('예측 ' + tmp[0] + ' : ' + tmp[1] + ' 저장!'); openBooth(true); }; c.appendChild(ok);
+        var list = E('div', 'plist'), rows = [];
+        if (ONLINE) allPreds.forEach(function (q) { rows.push([q.name, q.p, q.id === myId]); });
+        else { if (myPred) rows.push([cfg.name || '나', myPred, true]); Object.keys(npcPred).forEach(function (n) { rows.push([n, npcPred[n], false]); }); }
+        rows.forEach(function (rw) {
+          var hit = locked && rw[1][0] === score.h && rw[1][1] === score.a;
+          list.appendChild(E('div', 'pr' + (rw[2] ? ' me' : '') + (hit ? ' hit' : ''), rw[0] + '  ' + rw[1][0] + ' : ' + rw[1][1] + (hit ? '  ★ 적중' : '')));
+        });
+        c.appendChild(list);
+      }
+      var hd = E('div', 'host');
+      if (!isHost()) { hd.appendChild(E('p', 'sub', '경기 등록과 점수 입력은 방장만 할 수 있어요. (이름 옆 ★)')); c.appendChild(hd); return; }
+      hd.appendChild(E('h3', '', ONLINE ? '방장 메뉴' : '방장 메뉴 (데모에서는 누구나)'));
+      var h1 = E('input', 'txt'), a1 = E('input', 'txt'); h1.maxLength = a1.maxLength = 8; h1.placeholder = '우리 팀'; a1.placeholder = '상대 팀';
+      h1.value = match ? match.home : '투게더'; a1.value = match ? match.away : ''; h1.setAttribute('aria-label', '우리 팀 이름'); a1.setAttribute('aria-label', '상대 팀 이름');
+      hd.appendChild(h1); hd.appendChild(a1);
+      var reg = E('button', 'btn', match ? '경기 다시 등록' : '경기 등록'); reg.type = 'button';
+      reg.onclick = function () {
+        var hn = h1.value.trim() || '투게더', an = a1.value.trim();
+        if (!an) { toast('상대 팀 이름을 적어 주세요'); return; }
+        boothTmp = null;
+        if (ONLINE) { netSend({ t: 'match', home: hn, away: an }); return; }
+        match = { home: hn, away: an }; score.h = score.a = 0; locked = false; myPred = null; npcPred = {}; ensureNpcPred(); refreshSB(); toast('경기 등록: ' + hn + ' vs ' + an); sysChat('경기가 등록됐어요: ' + hn + ' vs ' + an + ' · 광장 부스에서 스코어를 예측해 보세요'); openBooth();
+      };
+      hd.appendChild(reg);
+      if (match) {
+        var sendScore = function () { refreshSB(); if (ONLINE) netSend({ t: 'score', h: score.h, a: score.a }); };
+        hd.appendChild(stepper(match.home + ' 점수', function () { return score.h; }, function (v) { score.h = v; sendScore(); }));
+        hd.appendChild(stepper(match.away + ' 점수', function () { return score.a; }, function (v) { score.a = v; sendScore(); }));
+        var lk = E('button', 'btn', locked ? '예측 다시 열기' : '전반 종료 (예측 마감)'); lk.type = 'button';
+        lk.onclick = function () { if (ONLINE) { netSend({ t: 'lock', v: !locked }); return; } locked = !locked; refreshSB(); toast(locked ? '예측이 마감됐어요' : '예측이 다시 열렸어요'); openBooth(true); }; hd.appendChild(lk);
+      }
+      c.appendChild(hd);
+    });
+    cmKind = 'booth';
+  }
+  var waveBusy = false;
+  function doWave(from) {
+    if (waveBusy || mode !== 'stadium') return; waveBusy = true; toast(from ? from + '에서 웨이브 시작!' : '웨이브!');
+    var L = stadActors.filter(function (a) { return a.sitting; }).sort(function (a, b) { return a.x - b.x; });
+    L.forEach(function (a) { setTimeout(function () { if (mode === 'stadium' && a.sitting) a.motion('yes', true); }, (a.x + 20) * 55); });
+    if (ambGain && soundOn) { var t0 = AC.currentTime; ambGain.gain.cancelScheduledValues(t0); ambGain.gain.setTargetAtTime(1.7, t0, 0.4); ambGain.gain.setTargetAtTime(0.9, t0 + 2.4, 0.8); }
+    setTimeout(function () { waveBusy = false; }, 3200);
+  }
+  setInterval(function () { if (!ONLINE && mode === 'stadium' && Math.random() < 0.5) doWave(rnd(['ㄴ팟', 'ㄷ팟'])); }, 40000);
+
+
+  // ---------- 채팅 (광장 · 스타디움 어디서나, 하단에 항상 표시) ----------
+  var chatDock = E('div'); chatDock.id = 'chatdock'; document.body.appendChild(chatDock);
+  var chatLog = E('div'); chatLog.id = 'chatlog'; chatLog.setAttribute('aria-live', 'polite'); chatDock.appendChild(chatLog);
+  var chatBox = E('form'); chatBox.id = 'chatbox'; chatDock.appendChild(chatBox);
+  var chatIn = E('input', 'txt'); chatIn.type = 'text'; chatIn.maxLength = 80; chatIn.placeholder = '메시지 입력 (Enter)'; chatIn.setAttribute('aria-label', '채팅 메시지');
+  var chatGo = E('button', 'btn go', '보내기'); chatGo.type = 'submit'; chatBox.appendChild(chatIn); chatBox.appendChild(chatGo);
+  var CHAT_LINES = ['오늘 이길 수 있겠죠?', '선수들 몸 풀리는 중이다', '치킨 시켰어요 ㅎㅎ', '웨이브 한 번 가요!', '예측 부스 가보셨어요?', '와 분위기 좋다', '응원 도구 챙겼어요', '전반 끝나기 전에 한 골 나오면 좋겠다', '같이 보니까 더 재밌네요'];
+  function addChat(name, text, cls) {
+    var row = E('div', 'cl ' + (cls || '')); row.appendChild(E('b', '', name)); row.appendChild(document.createTextNode(' ' + text)); chatLog.appendChild(row);
+    while (chatLog.children.length > 30) chatLog.removeChild(chatLog.firstChild);
+    chatLog.scrollTop = chatLog.scrollHeight;
+  }
+  function sysChat(t) { addChat('안내', t, 'sys'); }
+  chatBox.onsubmit = function (e) { e.preventDefault(); var v = chatIn.value.trim(); if (v) { addChat((cfg.name || '나'), v, 'mine'); if (ONLINE) netSend({ t: 'chat', text: v }); chatIn.value = ''; } };
+  function toggleChat() { if (mode !== 'creator') chatIn.focus(); }
+  sysChat('채팅창이에요. 같은 공간에 있는 사람들과 이야기해요.');
+  setInterval(function () {
+    if (ONLINE || mode === 'creator') return; var L = curActors().filter(function (a) { return !a.isMe; }); if (!L.length || Math.random() < 0.45) return;
+    addChat(rnd(L).name, rnd(CHAT_LINES));
+  }, 7000);
+
+  // ---------- 광장 스코어 예측 부스 ----------
+  var BOOTH = { x: 13, z: -3 }, boothMeshes = [], boothGo = false, boothLab = null;
+  function buildBooth() {
+    var g = new T.Group(); g.position.set(BOOTH.x, 0, BOOTH.z); scene.add(g);
+    function bx(w, h, d, c, x, y, z) { var m = box(g, w, h, d, c, x, y, z); boothMeshes.push(m); return m; }
+    bx(8, 2.4, 3, '#2d4a9a', 0, 1.2, 0); bx(8.4, 0.5, 3.4, '#f7f0e6', 0, 2.6, 0);
+    bx(0.5, 5, 0.5, '#59627f', -3.8, 2.5, 1.2); bx(0.5, 5, 0.5, '#59627f', 3.8, 2.5, 1.2);
+    for (var i = 0; i < 4; i++) bx(2.1, 0.7, 3.8, i % 2 ? '#f7f0e6' : '#e5484d', -3.15 + i * 2.1, 5.2, 0.3);
+    bx(6, 1.8, 0.4, '#1f2a46', 0, 7.0, 0.2); bx(4.4, 0.8, 0.2, '#f3c13a', 0, 7.0, 0.5);
+    bx(1.4, 1.6, 1.0, '#f3d86a', -2, 3.6, -0.4); bx(1.4, 1.6, 1.0, '#f3d86a', 2, 3.6, -0.4);
+  }
+
+  // ---------- 화면 전환 ----------
+  var fade = document.getElementById('fade'), busy = false, hintGate = null;
+  function refreshBody() { document.body.className = 'mode-' + mode + (seatedFlag ? ' seated' : ''); }
+  function curActors() { return mode === 'stadium' ? stadActors : plazaActors; }
+  function swapMode(fn) { if (busy) return; busy = true; fade.style.opacity = 1; setTimeout(function () { fn(); resize(); fade.style.opacity = 0; busy = false; }, 360); }
+  function applyVisibility() {
+    var list = mode === 'creator' ? [] : curActors();
+    [plazaActors, stadActors].forEach(function (L) { L.forEach(function (a) { var v = list.indexOf(a) >= 0; a.lab.style.display = v ? '' : 'none'; a.holder.visible = v; }); });
+  }
+  function setMode(m) {
+    mode = m; refreshBody(); camera.fov = m === 'creator' ? 34 : 38; camera.updateProjectionMatrix();
+    var ttl = { creator: '내 캐릭터 만들기', world: '스타디움 앞 광장', stadium: '스타디움' }[m];
+    var hint = { creator: '끌어서 돌려 보고, 오른쪽에서 골라요.', world: '탭하면 걸어가요. 입구로 들어가면 관중석이에요. 숫자 1~6은 모션이에요.', stadium: '색깔 좌석을 탭하면 앉아요. 끌어서 돌려 보세요.' }[m];
+    document.getElementById('ttl').textContent = ttl; document.getElementById('hint').textContent = hint; if (m !== 'creator' && typeof toast === 'function') toast(hint);
+    BND = m === 'stadium' ? { x: SB.x, z0: SB.z0, z1: SB.z1 } : { x: 27, z0: -13, z1: 22 };
+    GY = m === 'stadium' ? stadY : function () { return 0; };
+    applyVisibility();
+    pods.forEach(function (pd) { pd.lab.style.display = m === 'stadium' ? '' : 'none'; });
+    if (hintGate) hintGate.style.display = m === 'world' ? '' : 'none';
+    if (boothLab) boothLab.style.display = m === 'world' ? '' : 'none';
+    refreshVoice();
+  }
+  var demoSpawned = false;
+  function enterWorld() {
+    cfg.name = (cfg.name || '').trim() || '직관러'; saveCfg(); startAmb();
+    var go = function () {
+      swapMode(function () {
+        me.setCfg(Object.assign({}, cfg)); me.lab.textContent = cfg.name; me.x = 0; me.z = 14; me.y = 0; me.tx = null; me.mo = null; camT.set(0, 4, 14);
+        if (!ONLINE && !demoSpawned) { demoSpawned = true; spawnDemo(); }
+        setMode('world'); paintNames(); updCount();
+      });
+    };
+    if (NET && NET.readyState === 1) { netSend({ t: 'cfg', cfg: cfg, name: cfg.name }); return go(); }
+    if (netTried) return go();
+    netTried = true; toast('접속 중…');
+    netConnect(function (on) { ONLINE = on; if (on) toast('친구와 연결됐어요!'); go(); });
+  }
+  function spawnDemo() {
+    for (var i = 0; i < 7; i++) {
+      var c = Object.assign({}, PRESETS[i % PRESETS.length]); c.hairColor = (c.hairColor + i) % HAIRC.length;
+      plazaActors.push(new Actor(c, NAMES[i], false));
+    }
+  }
+  function backToCreator() { swapMode(function () { setMode('creator'); renderTabs(); renderBody(); rebuildPreview(); }); }
+  var demoStad = false;
+  function ensureStadium() { if (!builtStad) { buildStadium(); refreshPodLabels(); } }
+  function enterStadium() {
+    swapMode(function () {
+      if (!builtStad) { buildStadium(); refreshPodLabels(); }
+      if (!ONLINE && !demoStad) { demoStad = true; makeStadiumActors(); }
+      me.holder.parent.remove(me.holder); sscene.add(me.holder); me.sc = sscene;
+      if (stadActors.indexOf(me) < 0) stadActors.push(me); me.x = 0; me.z = -6; me.y = 0; me.tx = null; me.mo = null; me.sitting = false; me.seat = null;
+      syaw = Math.PI; spitch = 0.42; camT.set(0, 3, -6); setMode('stadium'); setAmbLevel(0.9);
+    });
+  }
+  function exitStadium() {
+    swapMode(function () {
+      if (me.sitting) me.stand();
+      var mi = stadActors.indexOf(me); if (mi >= 0) stadActors.splice(mi, 1);
+      me.holder.parent.remove(me.holder); scene.add(me.holder); me.sc = scene;
+      me.x = 0; me.z = -10.5; me.y = 0; me.tx = null; me.mo = null; camT.set(0, 4, -10.5); setMode('world'); setAmbLevel(0.5);
+    });
+  }
+
+  // 팟 이름 바꾸기
+  var modal = document.getElementById('modal'), podInp = document.getElementById('podname'), editPod = -1;
+  function openRename() {
+    if (!me.seat) return; editPod = me.seat.pod; podInp.value = pods[editPod].name; modal.style.display = 'flex'; setTimeout(function () { podInp.focus(); podInp.select(); }, 30);
+  }
+  function closeRename(ok) {
+    if (ok && editPod >= 0) { var v = podInp.value.trim().slice(0, 6); if (ONLINE) netSend({ t: 'pod', pod: editPod, name: v }); else { pods[editPod].name = v || pods[editPod].def; refreshPodLabels(); } }
+    modal.style.display = 'none'; editPod = -1;
+  }
+
+  // ---------- 온라인 (친구와 같이) ----------
+  (function () { try { roomCode = (new URLSearchParams(location.search).get('room') || '').toUpperCase().replace(/[^A-Z0-9]/g, '').slice(0, 12); } catch (e) { } })();
+  function genRoom() { var c = 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789', t = ''; for (var i = 0; i < 5; i++) t += c[Math.floor(Math.random() * c.length)]; return t; }
+  function isHost() { return !ONLINE || hostId === myId; }
+  function netSend(o) { if (NET && NET.readyState === 1) NET.send(JSON.stringify(o)); }
+  function inviteURL() { return location.origin + location.pathname + '?room=' + roomCode; }
+  var inviteBtn = E('button', 'btn world-only', '친구 초대'); inviteBtn.type = 'button'; inviteBtn.style.display = 'none';
+  (function () { var g = document.querySelector('.top > div:last-child'); if (g) g.insertBefore(inviteBtn, g.firstChild); })();
+  inviteBtn.onclick = function (e) {
+    e.stopPropagation(); var u = inviteURL();
+    try { navigator.clipboard.writeText(u).then(function () { toast('초대 링크를 복사했어요'); }, function () { sysChat('초대 링크: ' + u); }); } catch (er) { sysChat('초대 링크: ' + u); }
+  };
+  function updCount() { inviteBtn.style.display = ONLINE ? '' : 'none'; inviteBtn.textContent = '친구 초대 · ' + (1 + Object.keys(remotes).length) + '명'; }
+  function paintNames() {
+    if (!ONLINE) return; me.lab.textContent = (cfg.name || '나') + (hostId === myId ? ' ★' : '');
+    Object.keys(remotes).forEach(function (id) { var a = remotes[id]; a.lab.textContent = a.nm + (+id === hostId ? ' ★' : ''); });
+  }
+  function joinMsg() { return { t: 'join', room: roomCode, name: cfg.name, cfg: cfg, x: me.x, z: me.z, m: mode === 'stadium' ? 's' : 'p' }; }
+  function netConnect(done) {
+    if (!/^https?:$/.test(location.protocol) || window.__noNet) return done(false);
+    if (!roomCode) { roomCode = genRoom(); try { history.replaceState(null, '', '?room=' + roomCode); } catch (e) { } }
+    var ws, finished = false, timer;
+    function fin(v) { if (finished) return; finished = true; clearTimeout(timer); done(v); }
+    try { ws = new WebSocket((location.protocol === 'https:' ? 'wss://' : 'ws://') + location.host + '/'); } catch (e) { return fin(false); }
+    timer = setTimeout(function () { try { ws.close(); } catch (e) { } fin(false); }, 4000);
+    ws.onopen = function () { NET = ws; ws.send(JSON.stringify(joinMsg())); };
+    ws.onmessage = function (ev) { var m; try { m = JSON.parse(ev.data); } catch (e) { return; } if (m.t === 'init') { ONLINE = true; onInit(m); fin(true); } else onNet(m); };
+    ws.onerror = function () { fin(false); };
+    ws.onclose = function () { if (!finished) fin(false); else onNetClose(); };
+  }
+  var reconTimer = 0;
+  function onNetClose() {
+    NET = null; clearRemotes(); rtcCloseAll(); toast('연결이 끊겼어요. 다시 연결 중…');
+    clearTimeout(reconTimer);
+    (function again() { netConnect(function (on) { if (on) { toast('다시 연결됐어요'); if (me.sitting && me.seat) netSend({ t: 'sit', pod: me.seat.pod, idx: me.seat.idx }); applyVisibility(); } else reconTimer = setTimeout(again, 2500); }); })();
+  }
+  function clearRemotes() { Object.keys(remotes).forEach(removeRemote); remotes = {}; }
+  function addRemote(p) {
+    if (remotes[p.id] || p.id === myId) return remotes[p.id];
+    var inS = p.m === 's', a = new Actor(Object.assign(defCfg(), p.cfg), p.name, false, inS ? sscene : scene);
+    a.remote = true; a.speed = 9; a.x = p.x; a.z = p.z; a.yaw = p.yaw || 0; a.y = 0; a.tx = null; a.nm = p.name; a.inS = inS; a.next = Infinity;
+    remotes[p.id] = a; (inS ? stadActors : plazaActors).push(a);
+    if (p.seat) { remoteMode(a, true); ensureStadium(); a.sit(seats[p.seat.pod * 6 + p.seat.idx]); }
+    paintNames(); applyVisibility(); return a;
+  }
+  function removeRemote(id) {
+    var a = remotes[id]; if (!a) return; if (a.seat) a.stand();
+    [plazaActors, stadActors].forEach(function (L) { var i = L.indexOf(a); if (i >= 0) L.splice(i, 1); });
+    a.holder.parent && a.holder.parent.remove(a.holder); a.lab.remove(); delete remotes[id]; rtcClose(id); refreshPodLabels();
+  }
+  function remoteMode(a, toS) {
+    if (a.inS === toS) return; a.inS = toS;
+    var from = toS ? plazaActors : stadActors, to = toS ? stadActors : plazaActors, i = from.indexOf(a); if (i >= 0) from.splice(i, 1); to.push(a);
+    a.holder.parent && a.holder.parent.remove(a.holder); a.sc = toS ? sscene : scene; a.sc.add(a.holder); a.tx = null; if (toS) ensureStadium(); applyVisibility();
+  }
+  function applyMatch(m) {
+    var before = JSON.stringify(match); match = m.match || null; score.h = m.score ? m.score.h : 0; score.a = m.score ? m.score.a : 0; locked = !!m.locked;
+    refreshSB(); if (m.match && JSON.stringify(match) !== before) sysChat('경기가 등록됐어요: ' + match.home + ' vs ' + match.away + ' · 광장 부스에서 스코어를 예측해 보세요');
+    rerenderBooth();
+  }
+  function applyPods(list) { if (!builtStad) return; pods.forEach(function (pd, i) { pd.name = list[i] || pd.def; }); refreshPodLabels(); }
+  var podNamesPending = null;
+  function onInit(m) {
+    myId = m.id; hostId = m.host; roomCode = m.room; clearRemotes();
+    try { history.replaceState(null, '', '?room=' + roomCode); } catch (e) { }
+    ensureStadium();
+    m.players.forEach(function (p) { if (p.id !== myId) addRemote(p); });
+    applyMatch(m); allPreds = m.preds || []; applyPods(m.pods); paintNames(); updCount(); applyVisibility();
+  }
+  function onNet(m) {
+    var a = remotes[m.id];
+    switch (m.t) {
+      case 'join': addRemote(m.p); sysChat(m.p.name + ' 님이 들어왔어요'); updCount(); break;
+      case 'leave': if (a) sysChat(a.nm + ' 님이 나갔어요'); removeRemote(m.id); updCount(); break;
+      case 'pos': if (a) { remoteMode(a, m.m === 's'); if (Math.hypot(m.x - a.x, m.z - a.z) > 14) { a.x = m.x; a.z = m.z; a.tx = null; } else { a.tx = m.x; a.tz = m.z; } } break;
+      case 'sit': if (a) { remoteMode(a, true); ensureStadium(); a.sit(seats[m.pod * 6 + m.idx]); } break;
+      case 'stand': if (a) a.stand(); break;
+      case 'mo': if (a) a.motion(m.k, true); break;
+      case 'chat': addChat(m.name, m.text); break;
+      case 'wave': doWave(m.name && m.name !== cfg.name ? m.name : ''); break;
+      case 'pods': applyPods(m.pods); break;
+      case 'match': applyMatch(m); break;
+      case 'preds': allPreds = m.list; rerenderBooth(); break;
+      case 'cfg': if (a) { a.setCfg(Object.assign(defCfg(), m.cfg)); a.nm = m.name; paintNames(); } break;
+      case 'host': hostId = m.id; paintNames(); rerenderBooth(); if (m.id === myId) toast('이제 내가 방장이에요 ★'); break;
+      case 'deny': if (me.sitting) me.stand(); toast('이미 앉아 있는 자리예요'); break;
+      case 'rtc': rtcSignal(m); break;
+      case 'full': toast('방이 가득 찼어요'); break;
+    }
+  }
+  var lastPosT = 0, lastPosKey = '';
+  function netPosTick(now) {
+    if (now - lastPosT < 100 || me.sitting) return;
+    var md = mode === 'stadium' ? 's' : 'p', k = me.x.toFixed(2) + ',' + me.z.toFixed(2) + ',' + md; if (k === lastPosKey) return;
+    lastPosKey = k; lastPosT = now; netSend({ t: 'pos', x: +me.x.toFixed(2), z: +me.z.toFixed(2), yaw: +me.yaw.toFixed(2), m: md });
+  }
+
+  // ---------- 팟 음성 (WebRTC: 같은 팟에 앉은 사람끼리만) ----------
+  RTC = { peers: {}, ctx: null, dest: null, silent: null, mic: null };
+  var ICE = { iceServers: [{ urls: 'stun:stun.l.google.com:19302' }, { urls: 'stun:stun1.l.google.com:19302' }] };
+  function rtcInit() {
+    if (RTC.ctx) { if (RTC.ctx.state === 'suspended') RTC.ctx.resume(); return true; }
+    if (!window.RTCPeerConnection) return false;
+    try { RTC.ctx = new (window.AudioContext || window.webkitAudioContext)(); RTC.dest = RTC.ctx.createMediaStreamDestination(); RTC.silent = RTC.dest.stream.getAudioTracks()[0]; RTC.ctx.resume(); return true; } catch (e) { return false; }
+  }
+  function rtcWanted() {
+    var w = {}; if (!ONLINE || !me || !me.sitting || !me.seat) return w;
+    Object.keys(remotes).forEach(function (id) { var a = remotes[id]; if (a.sitting && a.seat && a.seat.pod === me.seat.pod) w[id] = true; });
+    return w;
+  }
+  function rtcSync() {
+    if (!ONLINE || !RTC) return; var want = rtcWanted();
+    Object.keys(RTC.peers).forEach(function (id) { if (!want[id]) rtcClose(id); });
+    var ids = Object.keys(want); if (!ids.length || !rtcInit()) return;
+    ids.forEach(function (id) {
+      var p = RTC.peers[id]; if (p && (p.pc.connectionState === 'failed' || p.pc.connectionState === 'closed')) { rtcClose(id); p = null; }
+      if (!RTC.peers[id] && myId < +id) rtcCreate(+id, true);
+    });
+  }
+  setInterval(function () { if (typeof rtcSync === 'function') rtcSync(); }, 4000);
+  function rtcCreate(id, init) {
+    var pc = new RTCPeerConnection(ICE), peer = { pc: pc, pend: [], rs: false, audio: null, an: null, buf: null, sender: null };
+    RTC.peers[id] = peer;
+    peer.sender = pc.addTrack(RTC.mic ? RTC.mic.getAudioTracks()[0] : RTC.silent, RTC.dest.stream);
+    pc.onicecandidate = function (e) { if (e.candidate) netSend({ t: 'rtc', to: id, data: { c: e.candidate } }); };
+    pc.ontrack = function (e) {
+      var st = e.streams[0] || new MediaStream([e.track]);
+      if (!peer.audio) { var au = document.createElement('audio'); au.autoplay = true; au.setAttribute('playsinline', ''); au.style.display = 'none'; document.body.appendChild(au); peer.audio = au; }
+      peer.audio.srcObject = st; peer.audio.volume = vstate.vol; var pr = peer.audio.play(); if (pr && pr.catch) pr.catch(function () { });
+      try { var src = RTC.ctx.createMediaStreamSource(st), an = RTC.ctx.createAnalyser(); an.fftSize = 512; src.connect(an); peer.an = an; peer.buf = new Uint8Array(512); } catch (er) { }
+    };
+    if (init) pc.createOffer().then(function (o) { return pc.setLocalDescription(o); }).then(function () { netSend({ t: 'rtc', to: id, data: { d: pc.localDescription } }); }).catch(function () { });
+    return peer;
+  }
+  function rtcSignal(m) {
+    var id = m.from, d = m.data; if (!rtcInit()) return;
+    if (!rtcWanted()[id] && !RTC.peers[id]) return;
+    var peer = RTC.peers[id] || rtcCreate(id, false), pc = peer.pc;
+    if (d.d) {
+      pc.setRemoteDescription(d.d).then(function () {
+        peer.rs = true; peer.pend.forEach(function (c) { pc.addIceCandidate(c).catch(function () { }); }); peer.pend = [];
+        if (d.d.type === 'offer') return pc.createAnswer().then(function (an) { return pc.setLocalDescription(an); }).then(function () { netSend({ t: 'rtc', to: id, data: { d: pc.localDescription } }); });
+      }).catch(function () { });
+    } else if (d.c) { if (peer.rs) pc.addIceCandidate(d.c).catch(function () { }); else peer.pend.push(d.c); }
+  }
+  function rtcClose(id) {
+    var p = RTC && RTC.peers[id]; if (!p) return; try { p.pc.close(); } catch (e) { }
+    if (p.audio) { p.audio.srcObject = null; p.audio.remove(); } delete RTC.peers[id];
+  }
+  function rtcCloseAll() { if (RTC) Object.keys(RTC.peers).forEach(rtcClose); }
+  function rtcMicSwap() {
+    if (!RTC || !RTC.ctx) return; var t = RTC.mic ? RTC.mic.getAudioTracks()[0] : RTC.silent;
+    Object.keys(RTC.peers).forEach(function (id) { var sd = RTC.peers[id].sender; if (sd) sd.replaceTrack(t).catch(function () { }); });
+  }
+  function rtcTick(now) {
+    if (!RTC) return; Object.keys(RTC.peers).forEach(function (id) {
+      var p = RTC.peers[id]; if (p.audio) p.audio.volume = vstate.vol;
+      if (p.an) { p.an.getByteTimeDomainData(p.buf); var mx = 0; for (var j = 0; j < p.buf.length; j++) mx = Math.max(mx, Math.abs(p.buf[j] - 128)); if (mx > 10 && remotes[id]) remotes[id].talkUntil = now + 250; }
+    });
+  }
+
+  function init() {
+    buildScene(); buildRoom(); setMode('creator'); resize();
+    me = new Actor(Object.assign({}, cfg), cfg.name || '나', true); me.x = 0; me.z = 14; plazaActors.push(me);
+    buildBooth(); boothLab = E('div', 'lab gate', '스코어 예측 부스'); labelsEl.appendChild(boothLab);
+    hintGate = document.createElement('div'); hintGate.className = 'lab gate'; hintGate.textContent = '스타디움 입장 ▼'; labelsEl.appendChild(hintGate);
+    var seatrow = E('div', 'seatrow'), morow = E('div', 'morow'); bar.appendChild(seatrow); bar.appendChild(morow);
+    MO.forEach(function (m, i) {
+      var b = document.createElement('button'); b.className = 'btn mo'; b.dataset.k = m[0]; b.type = 'button'; b.innerHTML = m[1] + '<small>' + (i + 1) + '</small>';
+      b.style.pointerEvents = 'auto'; b.onclick = function (e) { e.stopPropagation(); me.motion(m[0]); }; morow.appendChild(b);
+    });
+    [['웨이브', function () { if (ONLINE) netSend({ t: 'wave' }); else doWave(); }]].forEach(function (c) {
+      var b = E('button', 'btn seat-only', c[0]); b.type = 'button'; b.onclick = function (e) { e.stopPropagation(); c[1](); }; seatrow.insertBefore(b, seatrow.firstChild);
+    });
+    refreshSB();
+    var b1 = E('button', 'btn seat-only', '일어나기'), b2 = E('button', 'btn seat-only', '팟 이름');
+    b1.type = b2.type = 'button'; b1.onclick = function (e) { e.stopPropagation(); me.stand(); }; b2.onclick = function (e) { e.stopPropagation(); openRename(); };
+    seatrow.insertBefore(b1, seatrow.firstChild);
+    document.getElementById('px').onclick = function (e) { e.stopPropagation(); PSset = PSset === 0 ? 2 : (PSset >= 5 ? 0 : PSset + 1); this.textContent = PSset ? '픽셀 ' + PSset : '픽셀 자동'; resize(); };
+    document.getElementById('snd').onclick = function (e) { e.stopPropagation(); soundOn = !soundOn; this.textContent = soundOn ? '소리 끄기' : '소리 켜기'; setAmbLevel(mode === 'stadium' ? 0.9 : 0.5); };
+    document.getElementById('redo').onclick = function (e) { e.stopPropagation(); backToCreator(); };
+    document.getElementById('exit').onclick = function (e) { e.stopPropagation(); exitStadium(); };
+    document.getElementById('enter').onclick = enterWorld;
+    document.getElementById('pok').onclick = function () { closeRename(true); }; document.getElementById('pcancel').onclick = function () { closeRename(false); };
+    podInp.onkeydown = function (e) { if (e.key === 'Enter') closeRename(true); if (e.key === 'Escape') closeRename(false); };
+    if (window.ResizeObserver) new ResizeObserver(function () { document.documentElement.style.setProperty('--barh', bar.offsetHeight + 'px'); }).observe(bar);
+    renderTabs(); renderBody(); rebuildPreview();
+    camT.set(me.x, 2.6, me.z);
+    requestAnimationFrame(loop);
+  }
+
+  // ---------- 입력 ----------
+  var ray = new T.Raycaster(), plane = new T.Plane(new T.Vector3(0, 1, 0), 0), down = null;
+  stage.addEventListener('pointerdown', function (e) { down = { x: e.clientX, y: e.clientY, moved: false, lx: e.clientX, ly: e.clientY }; stage.setPointerCapture && stage.setPointerCapture(e.pointerId); });
+  stage.addEventListener('pointermove', function (e) {
+    if (!down) return;
+    if (Math.hypot(e.clientX - down.x, e.clientY - down.y) > 7) down.moved = true;
+    if (down.moved) {
+      if (mode === 'creator') prevTarget += (e.clientX - down.lx) * 0.012;
+      else if (mode === 'stadium') { syaw -= (e.clientX - down.lx) * 0.005; spitch = Math.max(0.25, Math.min(0.9, spitch + (e.clientY - down.ly) * 0.003)); }
+      else { yaw -= (e.clientX - down.lx) * 0.005; pitch = Math.max(0.3, Math.min(0.7, pitch + (e.clientY - down.ly) * 0.003)); }
+    }
+    down.lx = e.clientX; down.ly = e.clientY;
+  });
+  function ripple(e, r) { var rp = document.createElement('div'); rp.className = 'ripple'; rp.style.left = (e.clientX - r.left) + 'px'; rp.style.top = (e.clientY - r.top) + 'px'; labelsEl.appendChild(rp); setTimeout(function () { rp.remove(); }, 600); }
+  stage.addEventListener('pointerup', function (e) {
+    if (down && !down.moved && (mode === 'world' || mode === 'stadium')) {
+      var r = stage.getBoundingClientRect(), nx = ((e.clientX - r.left) / r.width) * 2 - 1, ny = -((e.clientY - r.top) / r.height) * 2 + 1;
+      ray.setFromCamera({ x: nx, y: ny }, camera);
+      if (mode === 'world' && ray.intersectObjects(boothMeshes, false)[0]) { if (me.sitting) me.stand(); me.pending = null; me.mo = null; me.tx = BOOTH.x; me.tz = BOOTH.z + 3.2; boothGo = true; ripple(e, r); down = null; return; }
+      boothGo = false;
+      if (mode === 'stadium') {
+        var hit = ray.intersectObjects(seatMeshes, false)[0];
+        if (hit) { me.goSeat(seats[hit.object.userData.seat]); ripple(e, r); down = null; return; }
+        var th = ray.intersectObjects(tierMeshes, false)[0];
+        if (th) { if (me.sitting) me.stand(); me.pending = null; me.tx = Math.max(-BND.x, Math.min(BND.x, th.point.x)); me.tz = Math.max(BND.z0, Math.min(BND.z1, th.point.z)); me.mo = null; ripple(e, r); down = null; return; }
+      }
+      var p = new T.Vector3();
+      if (ray.ray.intersectPlane(plane, p)) {
+        if (me.sitting) me.stand(); me.pending = null;
+        me.tx = Math.max(-BND.x, Math.min(BND.x, p.x)); me.tz = Math.max(BND.z0, Math.min(BND.z1, p.z)); me.mo = null; ripple(e, r);
+      }
+    }
+    down = null;
+  });
+  var keys = {};
+  window.addEventListener('keydown', function (e) {
+    if (e.key === 'Enter' && mode !== 'creator' && !(e.target && e.target.tagName === 'INPUT')) { e.preventDefault(); toggleChat(); return; }
+    if (mode === 'creator' || (e.target && e.target.tagName === 'INPUT')) return;
+    var k = e.key.toLowerCase();
+    if (/^[1-6]$/.test(k)) { me.motion(MO[+k - 1][0]); return; }
+    keys[k] = true; if (k.indexOf('arrow') === 0) e.preventDefault();
+  });
+  window.addEventListener('keyup', function (e) { keys[e.key.toLowerCase()] = false; });
+  function keyMove() {
+    var f = (keys.arrowup || keys.w ? 1 : 0) - (keys.arrowdown || keys.s ? 1 : 0), r = (keys.arrowright || keys.d ? 1 : 0) - (keys.arrowleft || keys.a ? 1 : 0);
+    if (f || r) {
+      var Y = mode === 'stadium' ? syaw : yaw;
+      var fx = -Math.sin(Y), fz = -Math.cos(Y), rx = Math.cos(Y), rz = -Math.sin(Y);
+      if (me.sitting) me.stand(); me.pending = null; me.mo = null; me.tx = me.x + (fx * f + rx * r) * 4; me.tz = me.z + (fz * f + rz * r) * 4;
+    }
+  }
+  function npcThink(a, now) {
+    if (a.sitting && me && me.seat && a.seat && a.seat.pod === me.seat.pod && !a.talkAt) a.talkAt = now + 1500 + Math.random() * 5000;
+    if (a.talkAt && now > a.talkAt) { a.talkUntil = now + 1200 + Math.random() * 2200; a.talkAt = 0; }
+    if (now < a.next) return;
+    if (a.sitting) {
+      a.next = now + 4000 + Math.random() * 7000;
+      if (!a.mo && Math.random() < 0.6) a.motion(rnd(['clap', 'clap', 'yes', 'wave', 'headgrab', 'angry']));
+      return;
+    }
+    if (a.mo || a.tx !== null) return;
+    a.next = now + 3000 + Math.random() * 5000;
+    if (Math.random() < 0.2) a.motion(rnd(MO)[0]);
+    else if (Math.random() < 0.8) {
+      if (a.wander) { a.tx = (Math.random() - .5) * 2 * 26; a.tz = -7.4 + Math.random() * 2.6; }
+      else { a.tx = (Math.random() - .5) * 2 * 24; a.tz = -10 + Math.random() * 30; }
+    }
+  }
+
+  var last = performance.now(), v3 = new T.Vector3(), gateTimer = 0;
+  function loop(now) {
+    var dt = Math.min(0.05, (now - last) / 1000); last = now;
+    if (mode === 'creator') {
+      prevG.rotation.y += (prevTarget - prevG.rotation.y) * Math.min(1, dt * 10);
+      var asp = camera.aspect, cz = asp < 1.2 ? 19.5 : 25;
+      camera.position.set(0, 6.6, cz); camera.lookAt(0, 4.4, 0);
+      renderer.render(cscene, camera);
+      requestAnimationFrame(loop); return;
+    }
+    keyMove(); micTick(); if (ONLINE) { netPosTick(now); rtcTick(now); }
+    var L = curActors();
+    for (var i = 0; i < L.length; i++) { if (!L[i].isMe && !L[i].remote) npcThink(L[i], now); L[i].update(now, dt); }
+    var rs = mode === 'stadium' ? sscene : scene;
+    if (mode === 'stadium') {
+      camT.x += (me.x - camT.x) * Math.min(1, dt * 3); camT.z += (me.z - camT.z) * Math.min(1, dt * 3); camT.y += (me.y + 3 - camT.y) * Math.min(1, dt * 3);
+      var sd = W < 520 ? 52 : 40;
+      var cx = camT.x + Math.sin(syaw) * Math.cos(spitch) * sd, cy = camT.y + Math.sin(spitch) * sd, czz = camT.z + Math.cos(syaw) * Math.cos(spitch) * sd;
+      czz = Math.max(-50, Math.min(czz, Z0 + NT * TIER_D - 0.6)); cx = Math.max(-31, Math.min(31, cx)); cy = Math.max(1.5, cy);
+      camera.position.set(cx, cy, czz); camera.lookAt(camT);
+    } else {
+      camT.x += (me.x - camT.x) * Math.min(1, dt * 2.5); camT.z += (me.z - camT.z) * Math.min(1, dt * 2.5); camT.y = 4;
+      var dd = W < 520 ? dist + 8 : dist;
+      camera.position.set(camT.x + Math.sin(yaw) * Math.cos(pitch) * dd, camT.y + Math.sin(pitch) * dd, camT.z + Math.cos(yaw) * Math.cos(pitch) * dd);
+      camera.lookAt(camT);
+      if (me.z < -12.1 && Math.abs(me.x) < 5.6 && !busy) enterStadium();
+    }
+    if (!window.__freeze) renderer.render(rs, camera);
+    for (var j = 0; j < L.length; j++) {
+      var a = L[j]; v3.set(a.x, a.y + 5.9 - (a.sitting ? 0.7 : 0), a.z).project(camera);
+      var sx = (v3.x * 0.5 + 0.5) * W, sy = (-v3.y * 0.5 + 0.5) * H;
+      a.lab.style.transform = 'translate(' + Math.round(sx) + 'px,' + Math.round(sy) + 'px) translate(-50%,-100%)';
+      a.lab.style.zIndex = Math.round(1000 - camera.position.distanceTo(a.holder.position));
+      var talk = a.isMe ? micOn && micLevel > 0.12 : (a.talkUntil > now && me && me.seat && a.seat && a.seat.pod === me.seat.pod && vstate.vol > 0 && !a.isMe);
+      a.lab.classList.toggle('talk', !!talk);
+    }
+    if (mode === 'stadium') {
+      pods.forEach(function (pd) {
+        v3.set(pd.x, stadY(0, 6) + 4.5 + 3 * TIER_H * 0.0, 4.8).project(camera);
+        pd.lab.style.transform = 'translate(' + Math.round((v3.x * 0.5 + 0.5) * W) + 'px,' + Math.round((-v3.y * 0.5 + 0.5) * H) + 'px) translate(-50%,-100%)';
+      });
+    } else if (mode === 'world' && hintGate) {
+      if (boothGo && me.tx === null) { boothGo = false; openBooth(); }
+      v3.set(BOOTH.x, 9, BOOTH.z).project(camera);
+      boothLab.style.transform = 'translate(' + Math.round((v3.x * 0.5 + 0.5) * W) + 'px,' + Math.round((-v3.y * 0.5 + 0.5) * H) + 'px) translate(-50%,-100%)';
+      v3.set(0, 11, -17.5).project(camera);
+      hintGate.style.transform = 'translate(' + Math.round((v3.x * 0.5 + 0.5) * W) + 'px,' + Math.round((-v3.y * 0.5 + 0.5) * H) + 'px) translate(-50%,-100%)';
+    }
+    requestAnimationFrame(loop);
+  }
+  window.addEventListener('resize', resize);
+  init();
+  window.__blk = { online: function () { return ONLINE; }, remotes: function () { return remotes; }, rtc: function () { return RTC; }, dbg: function (a) { camera.position.set(a[0], a[1], a[2]); camera.lookAt(a[3], a[4], a[5]); renderer.render(sscene, camera); }, cam: function () { return [camera.position.toArray(), camT.toArray(), syaw, spitch, W, H]; }, me: function () { return me; }, cfg: cfg, enter: enterWorld, back: backToCreator, stad: enterStadium, tab: function (t) { tabNow = t; renderTabs(); renderBody(); }, mode: function () { return mode; }, seats: seats, pods: pods, booth: openBooth, chat: addChat, wave: doWave, score: score, zoom: function (d) { dist = d; } };
+})();
+</script>

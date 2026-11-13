@@ -1,0 +1,9 @@
+{
+  "name": "jikgwan-world",
+  "version": "1.0.0",
+  "description": "친구와 같이 보는 직관 월드 (영상 동기화 없음, 각자 합법적으로 시청)",
+  "main": "server.js",
+  "scripts": { "start": "node server.js" },
+  "engines": { "node": ">=18" },
+  "dependencies": { "ws": "^8.18.0" }
+}
