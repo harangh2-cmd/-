@@ -206,6 +206,20 @@
   .btn.mictop svg { display: block; width: 18px; height: 22px; } .btn.mictop.on { background: var(--mint); } .btn.mictop.off { background: #ffd0d8; } .btn.mictop.open { outline: 3px solid var(--sun); outline-offset: 3px; }
   #voice { top: 62px; }
   @media (max-width: 760px) { #voice { top: 112px; } #chatlog { max-height: 56px; } }
+  /* 접기 / 한 줄 감정표현 / 입력 중 정리 */
+  .chathead, .barfold { pointer-events: auto; align-self: flex-start; border: 0; border-radius: 0; background: var(--cream2); color: var(--ink); font-family: var(--display); font-size: 12px; padding: 3px 10px 4px; cursor: pointer; box-shadow: var(--pxs2); }
+  .barfold { align-self: center; background: #fff; }
+  #chatdock.folded #chatlog { display: none; }
+  .bar .morow { flex-wrap: nowrap; gap: 6px; }
+  .bar .morow .btn { min-width: 0; max-width: 150px; padding: 0 4px; font-size: 15px; white-space: nowrap; overflow: hidden; }
+  .bar.mofold .morow { display: none; }
+  .bar { padding-top: 8px; gap: 6px; }
+  body.typing .bar, body.typing #voice, body.typing .btn.mictop { display: none !important; }
+  @media (max-width: 760px) { .bar .morow { gap: 4px; } .bar .morow .btn { font-size: 12px; min-height: 42px; padding: 0 2px; } .bar .morow .btn small { display: none; } }
+  .chathead, .barfold { width: 34px; height: 24px; padding: 0; font-size: 14px; line-height: 1; }
+  .bub { position: absolute; left: 0; top: 0; width: max-content; max-width: 170px; background: #fff; color: var(--ink); font-family: var(--display); font-size: 14px; line-height: 1.3; padding: 6px 10px 7px; box-shadow: var(--pxs2); pointer-events: none; will-change: transform; word-break: break-word; display: none; }
+  .bub.me { background: #ffe0ea; }
+  .bub::after { content: ""; position: absolute; left: 50%; bottom: -7px; margin-left: -4px; width: 8px; height: 8px; background: inherit; box-shadow: 2px 2px 0 0 var(--ink); transform: rotate(45deg); }
   #fade { background: var(--ink); }
   @media (max-width: 760px) { .pill { flex: none; } .pill h1 { white-space: nowrap; font-size: 17px; } #chatlog { max-height: 84px; } #sb { max-width: 94vw; padding: 5px 10px; gap: 6px; top: 118px; } #sb .t { font-size: 12px; } #sb b { font-size: 14px; } #sb em { display: none; }
     .panel { box-shadow: 0 -4px 0 0 var(--ink); } .bar { padding-left: 10px; padding-right: 10px; gap: 10px 8px; } }
@@ -985,23 +999,35 @@
 
   // ---------- 채팅 (광장 · 스타디움 어디서나, 하단에 항상 표시) ----------
   var chatDock = E('div'); chatDock.id = 'chatdock'; document.body.appendChild(chatDock);
+  var PKEY = 'jikgwan.ui.v1', ui = { chatFold: false, moFold: false };
+  try { var uu = JSON.parse(localStorage.getItem(PKEY) || 'null'); if (uu) ui = Object.assign(ui, uu); } catch (e) { }
+  function saveUI() { try { localStorage.setItem(PKEY, JSON.stringify(ui)); } catch (e) { } }
+  var chatHead = E('button', 'chathead'); chatHead.type = 'button'; chatDock.appendChild(chatHead);
+  function paintChatFold() { chatHead.textContent = ui.chatFold ? '▴' : '▾'; chatHead.setAttribute('aria-label', ui.chatFold ? '채팅 로그 펼치기' : '채팅 로그 접기'); chatDock.classList.toggle('folded', ui.chatFold); }
+  chatHead.onclick = function (e) { e.stopPropagation(); ui.chatFold = !ui.chatFold; saveUI(); paintChatFold(); };
+  paintChatFold();
   var chatLog = E('div'); chatLog.id = 'chatlog'; chatLog.setAttribute('aria-live', 'polite'); chatDock.appendChild(chatLog);
   var chatBox = E('form'); chatBox.id = 'chatbox'; chatDock.appendChild(chatBox);
   var chatIn = E('input', 'txt'); chatIn.type = 'text'; chatIn.maxLength = 80; chatIn.placeholder = '메시지 입력 (Enter)'; chatIn.setAttribute('aria-label', '채팅 메시지');
   var chatGo = E('button', 'btn go', '보내기'); chatGo.type = 'submit'; chatBox.appendChild(chatIn); chatBox.appendChild(chatGo);
+  chatIn.addEventListener('focus', function () { typingFlag = true; refreshBody(); }); chatIn.addEventListener('blur', function () { typingFlag = false; refreshBody(); });
   var CHAT_LINES = ['오늘 이길 수 있겠죠?', '선수들 몸 풀리는 중이다', '치킨 시켰어요 ㅎㅎ', '웨이브 한 번 가요!', '예측 부스 가보셨어요?', '와 분위기 좋다', '응원 도구 챙겼어요', '전반 끝나기 전에 한 골 나오면 좋겠다', '같이 보니까 더 재밌네요'];
   function addChat(name, text, cls) {
     var row = E('div', 'cl ' + (cls || '')); row.appendChild(E('b', '', name)); row.appendChild(document.createTextNode(' ' + text)); chatLog.appendChild(row);
     while (chatLog.children.length > 30) chatLog.removeChild(chatLog.firstChild);
     chatLog.scrollTop = chatLog.scrollHeight;
   }
+  function showBubble(a, text) {
+    if (!a) return; if (!a.bub) { a.bub = E('div', 'bub' + (a.isMe ? ' me' : '')); labelsEl.appendChild(a.bub); }
+    a.bub.textContent = text; a.bubUntil = performance.now() + 4500; a.bub.style.display = 'block';
+  }
   function sysChat(t) { addChat('안내', t, 'sys'); }
-  chatBox.onsubmit = function (e) { e.preventDefault(); var v = chatIn.value.trim(); if (v) { addChat((cfg.name || '나'), v, 'mine'); if (ONLINE) netSend({ t: 'chat', text: v }); chatIn.value = ''; } };
+  chatBox.onsubmit = function (e) { e.preventDefault(); var v = chatIn.value.trim(); if (v) { addChat((cfg.name || '나'), v, 'mine'); showBubble(me, v); if (ONLINE) netSend({ t: 'chat', text: v }); chatIn.value = ''; } };
   function toggleChat() { if (mode !== 'creator') chatIn.focus(); }
   sysChat('채팅창이에요. 같은 공간에 있는 사람들과 이야기해요.');
   setInterval(function () {
     if (ONLINE || mode === 'creator') return; var L = curActors().filter(function (a) { return !a.isMe; }); if (!L.length || Math.random() < 0.45) return;
-    addChat(rnd(L).name, rnd(CHAT_LINES));
+    var who = rnd(L), line = rnd(CHAT_LINES); addChat(who.name, line); showBubble(who, line);
   }, 7000);
 
   // ---------- 광장 스코어 예측 부스 ----------
@@ -1018,12 +1044,13 @@
 
   // ---------- 화면 전환 ----------
   var fade = document.getElementById('fade'), busy = false, hintGate = null;
-  function refreshBody() { document.body.className = 'mode-' + mode + (seatedFlag ? ' seated' : ''); }
+  var typingFlag = false;
+  function refreshBody() { document.body.className = 'mode-' + mode + (seatedFlag ? ' seated' : '') + (typingFlag ? ' typing' : ''); }
   function curActors() { return mode === 'stadium' ? stadActors : plazaActors; }
   function swapMode(fn) { if (busy) return; busy = true; fade.style.opacity = 1; setTimeout(function () { fn(); resize(); fade.style.opacity = 0; busy = false; }, 360); }
   function applyVisibility() {
     var list = mode === 'creator' ? [] : curActors();
-    [plazaActors, stadActors].forEach(function (L) { L.forEach(function (a) { var v = list.indexOf(a) >= 0; a.lab.style.display = v ? '' : 'none'; a.holder.visible = v; }); });
+    [plazaActors, stadActors].forEach(function (L) { L.forEach(function (a) { var v = list.indexOf(a) >= 0; a.lab.style.display = v ? '' : 'none'; a.holder.visible = v; if (!v && a.bub) a.bub.style.display = 'none'; }); });
   }
   function setMode(m) {
     mode = m; refreshBody(); camera.fov = m === 'creator' ? 34 : 38; camera.updateProjectionMatrix();
@@ -1168,7 +1195,7 @@
       case 'sit': if (a) { remoteMode(a, true); ensureStadium(); a.sit(seats[m.pod * 6 + m.idx]); } break;
       case 'stand': if (a) a.stand(); break;
       case 'mo': if (a) a.motion(m.k, true); break;
-      case 'chat': addChat(m.name, m.text); break;
+      case 'chat': addChat(m.name, m.text); showBubble(a, m.text); break;
       case 'wave': doWave(m.name && m.name !== cfg.name ? m.name : ''); break;
       case 'pods': applyPods(m.pods); break;
       case 'match': applyMatch(m); break;
@@ -1256,7 +1283,9 @@
     me = new Actor(Object.assign({}, cfg), cfg.name || '나', true); me.x = 0; me.z = 14; plazaActors.push(me);
     buildBooth(); boothLab = E('div', 'lab gate', '스코어 예측 부스'); labelsEl.appendChild(boothLab);
     hintGate = document.createElement('div'); hintGate.className = 'lab gate'; hintGate.textContent = '스타디움 입장 ▼'; labelsEl.appendChild(hintGate);
-    var seatrow = E('div', 'seatrow'), morow = E('div', 'morow'); bar.appendChild(seatrow); bar.appendChild(morow);
+    var seatrow = E('div', 'seatrow'), morow = E('div', 'morow'), barFold = E('button', 'barfold'); barFold.type = 'button'; bar.appendChild(seatrow); bar.appendChild(barFold); bar.appendChild(morow);
+    function paintBarFold() { barFold.textContent = ui.moFold ? '▴' : '▾'; barFold.setAttribute('aria-label', ui.moFold ? '감정 표현 펼치기' : '감정 표현 접기'); bar.classList.toggle('mofold', ui.moFold); }
+    barFold.onclick = function (e) { e.stopPropagation(); ui.moFold = !ui.moFold; saveUI(); paintBarFold(); }; paintBarFold();
     MO.forEach(function (m, i) {
       var b = document.createElement('button'); b.className = 'btn mo'; b.dataset.k = m[0]; b.type = 'button'; b.innerHTML = m[1] + '<small>' + (i + 1) + '</small>';
       b.style.pointerEvents = 'auto'; b.onclick = function (e) { e.stopPropagation(); me.motion(m[0]); }; morow.appendChild(b);
@@ -1382,6 +1411,10 @@
       var a = L[j]; v3.set(a.x, a.y + 5.9 - (a.sitting ? 0.7 : 0), a.z).project(camera);
       var sx = (v3.x * 0.5 + 0.5) * W, sy = (-v3.y * 0.5 + 0.5) * H;
       a.lab.style.transform = 'translate(' + Math.round(sx) + 'px,' + Math.round(sy) + 'px) translate(-50%,-100%)';
+      if (a.bub) {
+        if (a.bubUntil > now) { a.bub.style.display = 'block'; a.bub.style.transform = 'translate(' + Math.round(sx) + 'px,' + Math.round(sy - 30) + 'px) translate(-50%,-100%)'; a.bub.style.zIndex = 2000; }
+        else a.bub.style.display = 'none';
+      }
       a.lab.style.zIndex = Math.round(1000 - camera.position.distanceTo(a.holder.position));
       var talk = a.isMe ? micOn && micLevel > 0.12 : (a.talkUntil > now && me && me.seat && a.seat && a.seat.pod === me.seat.pod && vstate.vol > 0 && !a.isMe);
       a.lab.classList.toggle('talk', !!talk);
